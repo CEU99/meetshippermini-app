@@ -14,7 +14,7 @@ import { deleteSession } from '@/lib/auth';
 // Mark as dynamic
 export const dynamic = 'force-dynamic';
 
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   if (process.env.NODE_ENV === 'production') {
     return NextResponse.json(
       { error: 'Dev logout disabled in production' },
@@ -43,10 +43,11 @@ export async function GET(request: NextRequest) {
     });
 
     return response;
-  } catch (error: any) {
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error('[Dev Logout] Error:', error);
     return NextResponse.json(
-      { error: 'Failed to logout', message: error.message },
+      { error: 'Failed to logout', message: errorMessage },
       { status: 500 }
     );
   }

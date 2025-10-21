@@ -5,7 +5,7 @@ import { getServerSupabase } from '@/lib/supabase';
  * API endpoint to run the user_code migration
  * This creates the column, constraints, functions, and trigger if they don't exist
  */
-export async function POST(request: NextRequest) {
+export async function POST(_request: NextRequest) {
   try {
     console.log('🔄 Running user_code migration...');
 
@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   // Check migration status
   const supabase = getServerSupabase();
 

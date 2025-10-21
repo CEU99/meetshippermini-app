@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { getServerSupabase } from '@/lib/supabase';
-import { ACHIEVEMENTS, getAchievement } from '@/lib/constants/achievements';
+import { ACHIEVEMENTS, getAchievement, type AchievementCode } from '@/lib/constants/achievements';
 
 /**
  * GET /api/achievements/me
  * Get current user's earned achievements
  */
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     const session = await getSession();
     if (!session) {
@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
 
     // Enrich with achievement details
     const enrichedAchievements = (achievements || []).map((earned) => {
-      const achievement = getAchievement(earned.code as any);
+      const achievement = getAchievement(earned.code as unknown as AchievementCode);
       return {
         code: earned.code,
         title: achievement?.title || earned.code,
@@ -51,10 +51,11 @@ export async function GET(request: NextRequest) {
       total_earned: enrichedAchievements.length,
       total_available: Object.keys(ACHIEVEMENTS).length,
     });
-  } catch (error: any) {
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error('[API] Error in achievements/me:', error);
     return NextResponse.json(
-      { error: 'Internal server error', message: error?.message },
+      { error: 'Internal server error', message: errorMessage },
       { status: 500 }
     );
   }

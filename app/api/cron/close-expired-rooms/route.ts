@@ -46,13 +46,14 @@ export async function GET(request: NextRequest) {
       duration_ms: duration,
       timestamp: new Date().toISOString(),
     });
-  } catch (error: any) {
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error('[Cron] Error in auto-close job:', error);
     return NextResponse.json(
       {
         success: false,
         error: 'Internal server error',
-        message: error?.message,
+        message: errorMessage,
       },
       { status: 500 }
     );

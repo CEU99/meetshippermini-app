@@ -116,12 +116,12 @@ export async function POST(
       match: updatedMatch,
     });
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('[API] Regenerate link error:', error);
     return NextResponse.json(
       {
         error: 'Failed to regenerate meeting link',
-        message: error?.message,
+        message: error instanceof Error ? error.message : 'Unknown error',
       },
       { status: 500 }
     );

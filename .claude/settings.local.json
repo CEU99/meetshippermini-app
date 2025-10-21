@@ -10,7 +10,21 @@
       "Bash(curl:*)",
       "Bash(cat:*)",
       "Bash(chmod:*)",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "Bash(for file in app/api/dev/session/route.ts app/api/matches/[id]/complete/route.ts app/api/matches/[id]/regenerate-link/route.ts app/api/matches/[id]/respond/route.ts app/api/matches/[id]/schedule/route.ts app/api/matches/auto-run/route.ts app/api/matches/manual/route.ts app/api/users/[fid]/route.ts app/api/users/route.ts app/api/profile/route.ts app/api/migrate/user-code/route.ts)",
+      "Bash(do echo \"=== $file ===\")",
+      "Bash(done)",
+      "Bash(find:*)",
+      "Bash(for file in \"app/api/dev/session/route.ts\" \"app/api/matches/[id]/complete/route.ts\" \"app/api/matches/[id]/regenerate-link/route.ts\" \"app/api/matches/[id]/respond/route.ts\" \"app/api/matches/[id]/schedule/route.ts\" \"app/api/matches/auto-run/route.ts\" \"app/api/users/[fid]/route.ts\" \"app/api/users/route.ts\")",
+      "Bash(do)",
+      "Bash(echo:*)",
+      "Bash(if [ -f \"$file.bak\" ])",
+      "Bash(then)",
+      "Bash(fi)",
+      "Bash(pnpm run build:*)",
+      "Bash(git checkout app/**/*.tsx components/**/*.tsx)",
+      "Bash(pnpm lint:*)",
+      "Bash(git checkout:*)"
     ],
     "deny": [],
     "ask": []

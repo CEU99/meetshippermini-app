@@ -3,7 +3,7 @@
  * Core business logic for automatic and manual matching
  */
 
-import { getServerSupabase, User } from '@/lib/supabase';
+import { getServerSupabase } from '@/lib/supabase';
 import { Trait } from '@/lib/constants/traits';
 
 // Configuration constants
@@ -230,13 +230,13 @@ export async function getMatchableUsers(): Promise<MatchCandidate[]> {
     return [];
   }
 
-  return (data || []).map((u: any) => ({
-    fid: u.fid,
-    username: u.username,
-    display_name: u.display_name,
-    avatar_url: u.avatar_url,
-    bio: u.bio,
-    traits: Array.isArray(u.traits) ? u.traits : JSON.parse(u.traits || '[]'),
+  return (data || []).map((u: Record<string, unknown>) => ({
+    fid: u.fid as number,
+    username: u.username as string,
+    display_name: u.display_name as string | null,
+    avatar_url: u.avatar_url as string | null,
+    bio: u.bio as string | null,
+    traits: Array.isArray(u.traits) ? (u.traits as Trait[]) : JSON.parse((u.traits as string) || '[]'),
   }));
 }
 

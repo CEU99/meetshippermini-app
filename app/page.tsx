@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { SignInButton, useProfile } from '@farcaster/auth-kit';
+import { SignInButton } from '@farcaster/auth-kit';
 import { useFarcasterAuth } from '@/components/providers/FarcasterAuthProvider';
 
 export default function Home() {

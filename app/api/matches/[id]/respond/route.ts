@@ -112,7 +112,7 @@ export async function POST(
     }
 
     // Prepare update
-    let updateData: any = {};
+    const updateData: Record<string, boolean | string> = {};
 
     if (response === 'accept') {
       if (isUserA) {
@@ -288,17 +288,19 @@ export async function POST(
       match: matchDetails || updatedMatch,
       meetingLink,
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error('[API] Respond error (uncaught):', {
       error,
-      message: error?.message,
-      stack: error?.stack,
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
     });
+    const finalErrorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorDetails = error instanceof Error ? error.toString() : 'Unknown error';
     return NextResponse.json(
       {
         error: 'Failed to respond to match',
-        message: error?.message || 'Unknown error occurred',
-        details: error?.toString(),
+        message: finalErrorMessage,
+        details: errorDetails,
       },
       { status: 500 }
     );

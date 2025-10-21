@@ -9,7 +9,6 @@ import {
   findBestMatches,
   createMatchProposal,
   MATCHING_CONFIG,
-  type MatchCandidate,
 } from './matching-service';
 
 export interface AutoMatchResult {
@@ -94,16 +93,18 @@ export async function runAutomaticMatching(): Promise<AutoMatchResult> {
               console.log(`[Auto-Match] ✗ Skipped: ${result.error}`);
               errors.push(result.error || 'Unknown error');
             }
-          } catch (error: any) {
+          } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
             console.error('[Auto-Match] Error creating proposal:', error);
-            errors.push(`Failed to create proposal: ${error.message}`);
+            errors.push(`Failed to create proposal: ${errorMessage}`);
           }
         }
 
         usersProcessed++;
-      } catch (error: any) {
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
         console.error(`[Auto-Match] Error processing user ${user.username}:`, error);
-        errors.push(`Error processing ${user.username}: ${error.message}`);
+        errors.push(`Error processing ${user.username}: ${errorMessage}`);
       }
     }
 
@@ -126,11 +127,12 @@ export async function runAutomaticMatching(): Promise<AutoMatchResult> {
       completedAt,
       duration,
     };
-  } catch (error: any) {
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error('[Auto-Match] Fatal error:', error);
-    errors.push(`Fatal error: ${error.message}`);
+    errors.push(`Fatal error: ${errorMessage}`);
 
-    await finishRun(runId, usersProcessed, matchesCreated, 'failed', error.message);
+    await finishRun(runId, usersProcessed, matchesCreated, 'failed', errorMessage);
 
     throw error;
   }
@@ -163,7 +165,7 @@ async function finishRun(
 /**
  * Get recent auto-match runs
  */
-export async function getRecentAutoMatchRuns(limit: number = 10): Promise<any[]> {
+export async function getRecentAutoMatchRuns(limit: number = 10): Promise<AutoMatchResult[]> {
   const supabase = getServerSupabase();
 
   const { data, error } = await supabase

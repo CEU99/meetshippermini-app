@@ -27,8 +27,8 @@ function generateMeetingId(): string {
  */
 export async function generateMeetingLink(
   matchId: string,
-  userAFid: number,
-  userBFid: number
+  _userAFid: number,
+  _userBFid: number
 ): Promise<MeetingLink> {
   const meetingId = generateMeetingId();
 
@@ -314,9 +314,10 @@ export async function closeWherebyRoom(roomUrl: string): Promise<{
 
     console.log('[Whereby] ✓ Room closed successfully');
     return { success: true };
-  } catch (error: any) {
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error('[Whereby] Error closing room:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: errorMessage };
   }
 }
 

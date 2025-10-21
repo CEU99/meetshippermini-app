@@ -1,0 +1,82 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { getSession } from '@/lib/auth';
+import { runAutomaticMatching, shouldRunAutoMatching } from '@/lib/services/auto-match-runner';
+
+/**
+ * POST /api/matches/auto-run
+ * Manually trigger automatic matching
+ * For testing and admin purposes
+ */
+export async function POST(_request: NextRequest) {
+  try {
+    // Check authentication
+    const session = await getSession();
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Optional: Check if user is admin
+    // For MVP, any authenticated user can trigger (useful for testing)
+    // In production, restrict to admins only
+
+    // Check if should run (based on interval)
+    const shouldRun = await shouldRunAutoMatching();
+    if (!shouldRun) {
+      return NextResponse.json(
+        {
+          error: 'Auto-matching ran recently',
+          message: 'Please wait before running again',
+        },
+        { status: 429 }
+      );
+    }
+
+    // Run automatic matching
+    console.log('[API] Starting automatic matching...');
+    const result = await runAutomaticMatching();
+
+    return NextResponse.json({
+      success: true,
+      result: {
+        runId: result.runId,
+        usersProcessed: result.usersProcessed,
+        matchesCreated: result.matchesCreated,
+        duration: result.duration,
+        errors: result.errors.length > 0 ? result.errors : undefined,
+      },
+    });
+  } catch (error: any) {
+    console.error('[API] Auto-match error:', error);
+    return NextResponse.json(
+      {
+        error: 'Failed to run automatic matching',
+        message: error.message,
+      },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * GET /api/matches/auto-run
+ * Get recent auto-match run history
+ */
+export async function GET(_request: NextRequest) {
+  try {
+    const session = await getSession();
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { getRecentAutoMatchRuns } = await import('@/lib/services/auto-match-runner');
+    const runs = await getRecentAutoMatchRuns(10);
+
+    return NextResponse.json({ runs });
+  } catch (error: any) {
+    console.error('[API] Error fetching auto-match runs:', error);
+    return NextResponse.json(
+      { error: 'Failed to fetch auto-match runs' },
+      { status: 500 }
+    );
+  }
+}

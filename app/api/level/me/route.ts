@@ -7,7 +7,7 @@ import { calculateLevel, calculateLevelProgress, MAX_LEVEL } from '@/lib/constan
  * GET /api/level/me
  * Get current user's level information
  */
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     const session = await getSession();
     if (!session) {
@@ -73,10 +73,11 @@ export async function GET(request: NextRequest) {
       is_max_level: isMaxLevel,
       updated_at: levelData.updated_at,
     });
-  } catch (error: any) {
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error('[API] Error in level/me:', error);
     return NextResponse.json(
-      { error: 'Internal server error', message: error?.message },
+      { error: 'Internal server error', message: errorMessage },
       { status: 500 }
     );
   }

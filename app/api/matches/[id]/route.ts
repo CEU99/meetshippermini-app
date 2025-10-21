@@ -84,7 +84,7 @@ export async function PATCH(
     }
 
     // Determine if user is user_a or user_b
-    let updateData: any = {};
+    const updateData: Record<string, boolean> = {};
 
     if (match.user_a_fid === userFid) {
       if (action === 'accept') {
@@ -106,7 +106,7 @@ export async function PATCH(
     }
 
     // Update the match
-    const { data: updatedMatch, error: updateError } = await supabase
+    const { error: updateError } = await supabase
       .from('matches')
       .update(updateData)
       .eq('id', id)

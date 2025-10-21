@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState } from 'react';
-import { AuthClientError, AuthKitProvider, useProfile } from '@farcaster/auth-kit';
+import { AuthKitProvider, useProfile } from '@farcaster/auth-kit';
 import type { FarcasterUser } from '@/lib/types';
 import { apiClient } from '@/lib/api-client';
 
@@ -78,7 +78,7 @@ function FarcasterAuthProviderInner({ children }: { children: React.ReactNode })
           } else {
             console.log('[Auth] No dev session found, will try Farcaster auth');
           }
-        } catch (error) {
+        } catch {
           console.log('[Auth] Dev session check failed, falling back to Farcaster');
         }
       }
@@ -128,7 +128,7 @@ function FarcasterAuthProviderInner({ children }: { children: React.ReactNode })
             farcasterUser.bio = response.bio;
           }
           if (response.traits && response.traits.length > 0) {
-            farcasterUser.traits = response.traits as any;
+            farcasterUser.traits = response.traits as unknown as typeof farcasterUser.traits;
           }
 
           setUser(farcasterUser);

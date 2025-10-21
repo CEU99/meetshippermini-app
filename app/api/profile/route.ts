@@ -35,7 +35,7 @@ async function reloadSchemaCache(supabase: ReturnType<typeof getServerSupabase>)
  * Fetch current user's profile (bio and traits)
  * Returns empty values gracefully if columns don't exist
  */
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     console.log('=== GET /api/profile ===');
 
@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
     // Step 3: Try to query with bio and traits
     console.log('🔍 Querying profile for FID:', session.fid);
 
-    let query = supabase
+    const query = supabase
       .from('users')
       .select('fid, username, display_name, avatar_url, user_code, bio, traits')
       .eq('fid', session.fid)
@@ -263,7 +263,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     // Step 5: Build update object
-    const updates: Record<string, any> = {
+    const updates: Record<string, unknown> = {
       updated_at: new Date().toISOString(),
     };
 
@@ -359,6 +359,14 @@ export async function PATCH(request: NextRequest) {
       console.error('❌ Database error:', error);
       return NextResponse.json(
         { error: 'Failed to update profile', message: error.message },
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Check if data exists
+    if (!data) {
+      return NextResponse.json(
+        { error: 'Failed to update profile', message: 'No data returned from update' },
         { status: 500, headers: { 'Content-Type': 'application/json' } }
       );
     }

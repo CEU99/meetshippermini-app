@@ -98,7 +98,7 @@ export async function awardAchievement(
       level: Math.min(Math.floor((updatedLevel?.points_total || points) / 100), 20),
       level_progress: (updatedLevel?.points_total || points) % 100,
     };
-  } catch (error: any) {
+  } catch (error) {
     console.error('[Achievement] Error awarding achievement:', error);
     throw error;
   }
@@ -138,7 +138,7 @@ export async function checkProfileAchievements(userFid: number): Promise<AwardRe
     }
 
     return results;
-  } catch (error: any) {
+  } catch (error) {
     console.error('[Achievement] Error checking profile achievements:', error);
     return results;
   }
@@ -190,7 +190,7 @@ export async function checkMatchRequestAchievements(userFid: number): Promise<Aw
     }
 
     return results;
-  } catch (error: any) {
+  } catch (error) {
     console.error('[Achievement] Error checking match request achievements:', error);
     return results;
   }
@@ -239,7 +239,7 @@ export async function checkMeetingAchievements(userFid: number): Promise<AwardRe
     }
 
     return results;
-  } catch (error: any) {
+  } catch (error) {
     console.error('[Achievement] Error checking meeting achievements:', error);
     return results;
   }

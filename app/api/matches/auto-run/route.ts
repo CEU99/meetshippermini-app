@@ -7,7 +7,7 @@ import { runAutomaticMatching, shouldRunAutoMatching } from '@/lib/services/auto
  * Manually trigger automatic matching
  * For testing and admin purposes
  */
-export async function POST(request: NextRequest) {
+export async function POST(_request: NextRequest) {
   try {
     // Check authentication
     const session = await getSession();
@@ -45,12 +45,12 @@ export async function POST(request: NextRequest) {
         errors: result.errors.length > 0 ? result.errors : undefined,
       },
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error('[API] Auto-match error:', error);
     return NextResponse.json(
       {
         error: 'Failed to run automatic matching',
-        message: error.message,
+        message: error instanceof Error ? error.message : 'Unknown error',
       },
       { status: 500 }
     );
@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
  * GET /api/matches/auto-run
  * Get recent auto-match run history
  */
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     const session = await getSession();
     if (!session) {
@@ -72,7 +72,7 @@ export async function GET(request: NextRequest) {
     const runs = await getRecentAutoMatchRuns(10);
 
     return NextResponse.json({ runs });
-  } catch (error: any) {
+  } catch (error) {
     console.error('[API] Error fetching auto-match runs:', error);
     return NextResponse.json(
       { error: 'Failed to fetch auto-match runs' },

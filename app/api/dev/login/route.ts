@@ -156,13 +156,15 @@ export async function GET(request: NextRequest) {
     });
 
     return response;
-  } catch (error: any) {
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorStack = error instanceof Error ? error.stack : undefined;
     console.error('[Dev Login] Error:', error);
     return NextResponse.json(
       {
         error: 'Failed to create session',
-        message: error.message,
-        stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+        message: errorMessage,
+        stack: process.env.NODE_ENV === 'development' ? errorStack : undefined
       },
       { status: 500 }
     );
@@ -247,10 +249,11 @@ export async function POST(request: NextRequest) {
     });
 
     return response;
-  } catch (error: any) {
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error('[Dev Login] Error:', error);
     return NextResponse.json(
-      { error: 'Failed to create session', message: error.message },
+      { error: 'Failed to create session', message: errorMessage },
       { status: 500 }
     );
   }

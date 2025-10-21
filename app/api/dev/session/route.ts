@@ -14,7 +14,7 @@ import { getSession } from '@/lib/auth';
 // Mark as dynamic
 export const dynamic = 'force-dynamic';
 
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     const session = await getSession();
 
@@ -37,13 +37,14 @@ export async function GET(request: NextRequest) {
         expiresAt: new Date(session.expiresAt).toISOString(),
       }
     });
-  } catch (error: any) {
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error('[Dev Session] Error:', error);
     return NextResponse.json(
       {
         authenticated: false,
         session: null,
-        error: error.message
+        error: errorMessage
       },
       { status: 500 }
     );

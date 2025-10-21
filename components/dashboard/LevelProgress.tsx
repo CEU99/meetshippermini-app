@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { apiClient } from '@/lib/api-client';
-import { MAX_LEVEL, POINTS_PER_LEVEL } from '@/lib/constants/achievements';
+import { POINTS_PER_LEVEL } from '@/lib/constants/achievements';
 
 interface LevelData {
   user_fid: number;
@@ -98,7 +98,7 @@ export function LevelProgress() {
 
       {levelData.is_max_level && (
         <p className="text-xs text-yellow-700 font-medium mt-1 text-center">
-          👑 You've reached the maximum level!
+          👑 You&apos;ve reached the maximum level!
         </p>
       )}
     </div>

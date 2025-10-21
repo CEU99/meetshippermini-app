@@ -65,12 +65,12 @@ export async function POST(
       success: true,
       meetingLink: result.meetingLink,
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error('[API] Schedule error:', error);
     return NextResponse.json(
       {
         error: 'Failed to schedule meeting',
-        message: error.message,
+        message: error instanceof Error ? error.message : 'Unknown error',
       },
       { status: 500 }
     );
@@ -119,7 +119,7 @@ export async function GET(
     const meetingDetails = await getMeetingDetails(id);
 
     return NextResponse.json(meetingDetails);
-  } catch (error: any) {
+  } catch (error) {
     console.error('[API] Get schedule error:', error);
     return NextResponse.json(
       { error: 'Failed to fetch meeting details' },

@@ -107,15 +107,15 @@ export default function Dashboard() {
 
   const fetchStats = async () => {
     try {
-      const data = await apiClient.get<{ matches: any[] }>('/api/matches');
+      const data = await apiClient.get<{ matches: Array<{ status: string; created_by_fid: number }> }>('/api/matches');
 
       if (data.matches) {
         const matches = data.matches;
         const stats: MatchStats = {
           total: matches.length,
-          pending: matches.filter((m: any) => m.status === 'pending').length,
-          accepted: matches.filter((m: any) => m.status === 'accepted').length,
-          asCreator: matches.filter((m: any) => m.created_by_fid === user?.fid)
+          pending: matches.filter((m) => m.status === 'pending').length,
+          accepted: matches.filter((m) => m.status === 'accepted').length,
+          asCreator: matches.filter((m) => m.created_by_fid === user?.fid)
             .length,
         };
         setStats(stats);
@@ -453,7 +453,7 @@ export default function Dashboard() {
               Welcome to Meet Shipper!
             </h3>
             <p className="text-gray-600 mb-6">
-              You haven't created any matches yet. Get started by introducing
+              You haven&apos;t created any matches yet. Get started by introducing
               two friends from your Farcaster network.
             </p>
             <Link

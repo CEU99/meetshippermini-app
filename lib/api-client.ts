@@ -4,14 +4,14 @@ export class ApiError extends Error {
   constructor(
     public status: number,
     message: string,
-    public data?: any
+    public data?: unknown
   ) {
     super(message);
     this.name = 'ApiError';
   }
 }
 
-export async function apiFetch<T = any>(
+export async function apiFetch<T = unknown>(
   url: string,
   options?: RequestInit
 ): Promise<T> {
@@ -34,7 +34,7 @@ export async function apiFetch<T = any>(
           const text = await response.text();
           errorMessage = text || errorMessage;
         }
-      } catch (parseError) {
+      } catch {
         // Failed to parse error response, use default message
       }
 
@@ -83,9 +83,9 @@ export async function apiFetch<T = any>(
 
 // Convenience methods
 export const apiClient = {
-  get: <T = any>(url: string) => apiFetch<T>(url, { method: 'GET' }),
+  get: <T = unknown>(url: string) => apiFetch<T>(url, { method: 'GET' }),
 
-  post: <T = any>(url: string, data?: any) =>
+  post: <T = unknown>(url: string, data?: unknown) =>
     apiFetch<T>(url, {
       method: 'POST',
       headers: {
@@ -94,7 +94,7 @@ export const apiClient = {
       body: data ? JSON.stringify(data) : undefined,
     }),
 
-  patch: <T = any>(url: string, data?: any) =>
+  patch: <T = unknown>(url: string, data?: unknown) =>
     apiFetch<T>(url, {
       method: 'PATCH',
       headers: {
@@ -103,5 +103,5 @@ export const apiClient = {
       body: data ? JSON.stringify(data) : undefined,
     }),
 
-  delete: <T = any>(url: string) => apiFetch<T>(url, { method: 'DELETE' }),
+  delete: <T = unknown>(url: string) => apiFetch<T>(url, { method: 'DELETE' }),
 };

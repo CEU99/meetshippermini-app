@@ -76,9 +76,10 @@ export default function CreateMatch() {
       const data = await apiClient.get<UserProfile>(`/api/users/${fidNum}`);
       setTargetUser(data);
       console.log('[CreateMatch] ✅ User found:', data.username);
-    } catch (error: any) {
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       console.error('[CreateMatch] Auto-lookup failed:', error);
-      setError(error.message || 'User not found. Please check the FID and try again.');
+      setError(errorMessage || 'User not found. Please check the FID and try again.');
     } finally {
       setLookingUpUser(false);
     }
@@ -134,9 +135,10 @@ export default function CreateMatch() {
 
         setTargetUser(data.user);
       }
-    } catch (error: any) {
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       console.error('Error looking up user:', error);
-      setError(error.message || 'User not found. Please check the FID and try again.');
+      setError(errorMessage || 'User not found. Please check the FID and try again.');
     } finally {
       setLookingUpUser(false);
     }
@@ -170,9 +172,10 @@ export default function CreateMatch() {
       setTimeout(() => {
         router.push('/mini/inbox');
       }, 2000);
-    } catch (error: any) {
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       console.error('Error creating match:', error);
-      setError(error.message || 'Failed to create match. Please try again.');
+      setError(errorMessage || 'Failed to create match. Please try again.');
     } finally {
       setSubmitting(false);
     }
@@ -204,7 +207,7 @@ export default function CreateMatch() {
           <div className="bg-blue-50 border border-blue-200 rounded-md p-3 mb-6">
             <p className="text-sm text-blue-800">
               <strong>How it works:</strong> You send a match request with an introduction message.
-              The other person can accept or decline. If accepted, you'll both receive a meeting link.
+              The other person can accept or decline. If accepted, you&apos;ll both receive a meeting link.
             </p>
           </div>
 
@@ -256,7 +259,7 @@ export default function CreateMatch() {
                     </button>
                   </div>
                   <p className="text-sm text-gray-500">
-                    Enter a Farcaster ID (FID) like "12345"
+                    Enter a Farcaster ID (FID) like &quot;12345&quot;
                   </p>
                 </div>
               ) : (
@@ -360,8 +363,8 @@ export default function CreateMatch() {
               <ul className="text-sm text-yellow-800 space-y-1">
                 <li>• {targetUser ? targetUser.display_name || targetUser.username : 'The other person'} will receive your match request in their inbox</li>
                 <li>• They can accept or decline your request</li>
-                <li>• If accepted: You'll both get a meeting link automatically</li>
-                <li>• If declined: You'll be notified (7-day cooldown applies)</li>
+                <li>• If accepted: You&apos;ll both get a meeting link automatically</li>
+                <li>• If declined: You&apos;ll be notified (7-day cooldown applies)</li>
               </ul>
             </div>
 

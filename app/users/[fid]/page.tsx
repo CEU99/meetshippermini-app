@@ -51,9 +51,10 @@ export default function UserProfilePage() {
     try {
       const data = await apiClient.get<UserProfile>(`/api/users/${fid}`);
       setProfile(data);
-    } catch (err: any) {
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
       console.error('Error fetching user profile:', err);
-      setError(err.message || 'Failed to load user profile');
+      setError(errorMessage || 'Failed to load user profile');
     } finally {
       setLoading(false);
     }

@@ -78,10 +78,11 @@ async function handle(req: NextRequest) {
         errors: result.errors.length > 0 ? result.errors : undefined,
       },
     });
-  } catch (error: any) {
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error('[Cron] Auto-match error:', error);
     return NextResponse.json(
-      { error: 'Failed to run automatic matching', message: error?.message || 'Unknown error' },
+      { error: 'Failed to run automatic matching', message: errorMessage },
       { status: 500 }
     );
   }

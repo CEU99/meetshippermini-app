@@ -121,9 +121,10 @@ export default function Inbox() {
       if (data.meetingLink) {
         alert(`Meeting scheduled! Link: ${data.meetingLink}`);
       }
-    } catch (error: any) {
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       console.error('Error responding to match:', error);
-      alert(error.message || 'Failed to respond to match');
+      alert(errorMessage || 'Failed to respond to match');
     } finally {
       setActionLoading(false);
     }
@@ -147,9 +148,10 @@ export default function Inbox() {
 
       // Show success message
       alert(data.message || 'Meeting marked as completed');
-    } catch (error: any) {
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       console.error('Error completing match:', error);
-      alert(error.message || 'Failed to mark meeting as completed');
+      alert(errorMessage || 'Failed to mark meeting as completed');
     } finally {
       setActionLoading(false);
     }
@@ -521,7 +523,7 @@ export default function Inbox() {
                       <h4 className="font-semibold text-gray-900 mb-2">
                         Message from @{selectedMatch.creator_username}:
                       </h4>
-                      <p className="text-sm text-gray-700">"{selectedMatch.message}"</p>
+                      <p className="text-sm text-gray-700">&quot;{selectedMatch.message}&quot;</p>
                     </div>
                   )}
 
@@ -566,7 +568,7 @@ export default function Inbox() {
                         {timeInfo.status === 'scheduled' && (
                           <div className="bg-blue-50 border border-blue-300 rounded-md p-3 mb-3">
                             <p className="text-sm text-blue-800">
-                              ⏱️ <strong>Important:</strong> After someone joins the meeting, you'll have 2 hours before the room automatically closes.
+                              ⏱️ <strong>Important:</strong> After someone joins the meeting, you&apos;ll have 2 hours before the room automatically closes.
                             </p>
                           </div>
                         )}

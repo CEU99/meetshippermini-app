@@ -1,0 +1,84 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { getSession } from '@/lib/auth';
+import { getServerSupabase } from '@/lib/supabase';
+import { calculateLevel, calculateLevelProgress, MAX_LEVEL } from '@/lib/constants/achievements';
+
+/**
+ * GET /api/level/me
+ * Get current user's level information
+ */
+export async function GET(_request: NextRequest) {
+  try {
+    const session = await getSession();
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const supabase = getServerSupabase();
+    const userFid = session.fid;
+
+    // Get or create user level record
+    const { data: levelData, error: levelError } = await supabase
+      .from('user_levels')
+      .select('*')
+      .eq('user_fid', userFid)
+      .single();
+
+    // If no record exists, create one
+    if (levelError && levelError.code === 'PGRST116') {
+      const { data: newLevel, error: insertError } = await supabase
+        .from('user_levels')
+        .insert({
+          user_fid: userFid,
+          points_total: 0,
+        })
+        .select()
+        .single();
+
+      if (insertError) {
+        console.error('[API] Error creating user level:', insertError);
+        return NextResponse.json(
+          { error: 'Failed to initialize level data' },
+          { status: 500 }
+        );
+      }
+
+      return NextResponse.json({
+        user_fid: userFid,
+        points_total: 0,
+        level: 0,
+        level_progress: 0,
+        is_max_level: false,
+        updated_at: newLevel?.updated_at || new Date().toISOString(),
+      });
+    }
+
+    if (levelError) {
+      console.error('[API] Error fetching user level:', levelError);
+      return NextResponse.json(
+        { error: 'Failed to fetch level data' },
+        { status: 500 }
+      );
+    }
+
+    const level = calculateLevel(levelData.points_total);
+    const levelProgress = calculateLevelProgress(levelData.points_total);
+    const isMaxLevel = level >= MAX_LEVEL;
+
+    return NextResponse.json({
+      user_fid: levelData.user_fid,
+      points_total: levelData.points_total,
+      level,
+      level_progress: levelProgress,
+      is_max_level: isMaxLevel,
+      updated_at: levelData.updated_at,
+    });
+  } catch (_error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('[API] Error in level/me:', error);
+    return NextResponse.json(
+      { error: 'Internal server error', message: errorMessage },
+      { status: 500 }
+    );
+  }
+}

@@ -112,7 +112,7 @@ export async function POST(
     }
 
     // Prepare update data
-    const updateData: any = {};
+    const updateData: Record<string, boolean> = {};
 
     if (isUserA) {
       updateData.a_completed = true;
@@ -233,8 +233,6 @@ export async function POST(
       }
     } else {
       // Only one user marked as completed so far
-      const otherUserFid = isUserA ? match.user_b_fid : match.user_a_fid;
-
       await supabase.from('messages').insert({
         match_id: id,
         sender_fid: userFid,
@@ -274,17 +272,19 @@ export async function POST(
         : 'You have marked the meeting as completed',
     });
 
-  } catch (error: any) {
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorStack = error instanceof Error ? error.stack : undefined;
     console.error('[API] Complete error (uncaught):', {
       error,
-      message: error?.message,
-      stack: error?.stack,
+      message: errorMessage,
+      stack: errorStack,
     });
     return NextResponse.json(
       {
         error: 'Failed to mark meeting as completed',
-        message: error?.message || 'Unknown error occurred',
-        details: error?.toString(),
+        message: errorMessage,
+        details: error instanceof Error ? error.toString() : 'Unknown error',
       },
       { status: 500 }
     );

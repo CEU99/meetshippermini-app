@@ -28,9 +28,16 @@ const TEST_USERS: TestUser[] = [
   },
 ];
 
+interface DevSession {
+  fid: number;
+  username: string;
+  displayName?: string;
+  avatarUrl?: string;
+}
+
 export default function DevLoginPage() {
   const router = useRouter();
-  const [currentSession, setCurrentSession] = useState<any>(null);
+  const [currentSession, setCurrentSession] = useState<DevSession | null>(null);
   const [loading, setLoading] = useState(false);
   const [checking, setChecking] = useState(true);
 
@@ -72,8 +79,8 @@ export default function DevLoginPage() {
       } else {
         alert(`❌ Login failed: ${data.error || 'Unknown error'}`);
       }
-    } catch (error: any) {
-      alert(`❌ Login failed: ${error.message}`);
+    } catch (error) {
+      alert(`❌ Login failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setLoading(false);
     }
@@ -85,8 +92,8 @@ export default function DevLoginPage() {
       await fetch('/api/dev/logout');
       setCurrentSession(null);
       alert('✅ Logged out successfully');
-    } catch (error: any) {
-      alert(`❌ Logout failed: ${error.message}`);
+    } catch (error) {
+      alert(`❌ Logout failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setLoading(false);
     }
@@ -258,7 +265,7 @@ export default function DevLoginPage() {
             <div>
               <p className="text-gray-400 mb-1"># Login as Alice:</p>
               <code className="text-green-400">
-                curl "http://localhost:3000/api/dev/login?fid=1111&username=alice&displayName=Alice&userCode=6287777951"
+                curl &quot;http://localhost:3000/api/dev/login?fid=1111&username=alice&displayName=Alice&userCode=6287777951&quot;
               </code>
             </div>
             <div>

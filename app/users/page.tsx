@@ -133,9 +133,10 @@ export default function UsersPage() {
 
       setUsers(data.users);
       setPagination(data.pagination);
-    } catch (err: any) {
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
       console.error('Error fetching users:', err);
-      setError(err.message || 'Failed to load users');
+      setError(errorMessage || 'Failed to load users');
     } finally {
       setLoading(false);
     }
