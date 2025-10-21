@@ -52,7 +52,24 @@ interface Match {
   updated_at: string;
 }
 
-type InboxTab = 'pending' | 'awaiting' | 'accepted' | 'declined' | 'completed';
+type InboxTab = 'pending' | 'awaiting' | 'accepted' | 'declined' | 'completed' | 'suggestions';
+
+interface Suggestion {
+  id: string;
+  message: string;
+  status: string;
+  myAcceptance: boolean;
+  otherAcceptance: boolean;
+  otherUser: {
+    fid: number;
+    username: string;
+    displayName: string;
+    avatarUrl: string;
+  };
+  chatRoomId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
 
 export default function Inbox() {
   const router = useRouter();
@@ -64,6 +81,7 @@ export default function Inbox() {
   const [actionLoading, setActionLoading] = useState(false);
   const [currentTime, setCurrentTime] = useState(Date.now());
   const [chatRoomMap, setChatRoomMap] = useState<Map<string, string>>(new Map()); // matchId -> roomId
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -73,7 +91,11 @@ export default function Inbox() {
 
   useEffect(() => {
     if (isAuthenticated) {
-      fetchMatches();
+      if (activeTab === 'suggestions') {
+        fetchSuggestions();
+      } else {
+        fetchMatches();
+      }
     }
   }, [isAuthenticated, activeTab]);
 
@@ -132,6 +154,52 @@ export default function Inbox() {
       }
     } catch (error) {
       console.error('Error fetching chat rooms:', error);
+    }
+  };
+
+  const fetchSuggestions = async () => {
+    setLoading(true);
+    try {
+      const data = await apiClient.get<{ success: boolean; suggestions: Suggestion[]; total: number }>(
+        '/api/inbox/suggestions'
+      );
+      if (data.success && data.suggestions) {
+        setSuggestions(data.suggestions);
+      }
+    } catch (error) {
+      console.error('Error fetching suggestions:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAcceptSuggestion = async (suggestionId: string) => {
+    setActionLoading(true);
+    try {
+      await apiClient.post(`/api/matches/suggestions/${suggestionId}/accept`, {});
+      await fetchSuggestions();
+    } catch (error) {
+      console.error('Error accepting suggestion:', error);
+      alert('Failed to accept suggestion');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleDeclineSuggestion = async (suggestionId: string) => {
+    if (!confirm('Are you sure you want to decline this suggestion? A 7-day cooldown will be applied.')) {
+      return;
+    }
+
+    setActionLoading(true);
+    try {
+      await apiClient.post(`/api/matches/suggestions/${suggestionId}/decline`, {});
+      await fetchSuggestions();
+    } catch (error) {
+      console.error('Error declining suggestion:', error);
+      alert('Failed to decline suggestion');
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -426,6 +494,21 @@ export default function Inbox() {
               >
                 Completed
               </button>
+              <button
+                onClick={() => setActiveTab('suggestions')}
+                className={`py-4 px-6 text-sm font-medium border-b-2 ${
+                  activeTab === 'suggestions'
+                    ? 'border-purple-500 text-purple-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                Suggestions
+                {suggestions.length > 0 && (
+                  <span className="ml-2 px-2 py-1 rounded-full bg-green-100 text-green-600 text-xs font-bold">
+                    {suggestions.length}
+                  </span>
+                )}
+              </button>
             </nav>
           </div>
         </div>
@@ -435,6 +518,76 @@ export default function Inbox() {
           <div className="flex items-center justify-center py-12">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
           </div>
+        ) : activeTab === 'suggestions' ? (
+          // Suggestions Tab Content
+          suggestions.length === 0 ? (
+            <div className="bg-white rounded-lg shadow-md p-8 text-center">
+              <p className="text-gray-600">No match suggestions yet</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {suggestions.map((suggestion) => (
+                <div key={suggestion.id} className="bg-white rounded-lg shadow-md p-6">
+                  <div className="flex items-start space-x-4">
+                    <Image
+                      src={suggestion.otherUser.avatarUrl || '/default-avatar.png'}
+                      alt={suggestion.otherUser.displayName}
+                      width={64}
+                      height={64}
+                      className="rounded-full"
+                    />
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-gray-900 text-lg mb-1">
+                        Match suggestion with {suggestion.otherUser.displayName}
+                      </h3>
+                      <p className="text-sm text-gray-600 mb-1">
+                        @{suggestion.otherUser.username}
+                      </p>
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-3 mb-4">
+                        <p className="text-sm text-blue-900">{suggestion.message}</p>
+                      </div>
+
+                      {suggestion.status === 'proposed' && !suggestion.myAcceptance && (
+                        <div className="flex space-x-3">
+                          <button
+                            onClick={() => handleAcceptSuggestion(suggestion.id)}
+                            disabled={actionLoading}
+                            className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-gray-300 font-medium"
+                          >
+                            {actionLoading ? 'Processing...' : 'Accept'}
+                          </button>
+                          <button
+                            onClick={() => handleDeclineSuggestion(suggestion.id)}
+                            disabled={actionLoading}
+                            className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:bg-gray-300 font-medium"
+                          >
+                            Decline
+                          </button>
+                        </div>
+                      )}
+
+                      {suggestion.myAcceptance && !suggestion.otherAcceptance && (
+                        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                          <p className="text-sm text-yellow-800">
+                            ✓ You accepted. Waiting for {suggestion.otherUser.displayName}...
+                          </p>
+                        </div>
+                      )}
+
+                      {suggestion.myAcceptance && suggestion.otherAcceptance && suggestion.chatRoomId && (
+                        <button
+                          onClick={() => router.push(`/mini/chat/${suggestion.chatRoomId}`)}
+                          className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 font-medium"
+                        >
+                          Open Chat Room
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )
         ) : matches.length === 0 ? (
           <div className="bg-white rounded-lg shadow-md p-8 text-center">
             <p className="text-gray-600 mb-4">
