@@ -69,6 +69,19 @@ const nextConfig: NextConfig = {
         port: '',
         pathname: '/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'via.placeholder.com',
+        port: '',
+        pathname: '/**',
+      },
+      // Neynar CDN for Farcaster data
+      {
+        protocol: 'https',
+        hostname: '*.neynar.com',
+        port: '',
+        pathname: '/**',
+      },
       // Supabase storage
       {
         protocol: 'https',

@@ -10,6 +10,7 @@ import { apiClient } from '@/lib/api-client';
 import { getTraitColor, type Trait } from '@/lib/constants/traits';
 import { LevelProgress } from '@/components/dashboard/LevelProgress';
 import { Achievements } from '@/components/dashboard/Achievements';
+import { FarcasterFollowing } from '@/components/dashboard/FarcasterFollowing';
 
 interface MatchStats {
   total: number;
@@ -380,6 +381,11 @@ export default function Dashboard() {
         {/* Achievements Section */}
         <div className="mb-8">
           <Achievements />
+        </div>
+
+        {/* Farcaster Following Section */}
+        <div className="mb-8">
+          <FarcasterFollowing />
         </div>
 
         {/* Quick Actions */}

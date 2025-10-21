@@ -84,15 +84,58 @@ class NeynarAPI {
     return data.users || [];
   }
 
-  // Get user's following list
-  async getUserFollowing(fid: number, limit: number = 100): Promise<NeynarUser[]> {
+  // Get user's following list with pagination support
+  async getUserFollowing(
+    fid: number,
+    limit: number = 100,
+    cursor?: string
+  ): Promise<{ users: NeynarUser[]; next_cursor?: string }> {
     try {
-      const data = await this.fetch(
-        `/farcaster/following?fid=${fid}&limit=${limit}`
-      );
-      return data.users || [];
+      // Clamp limit between 1 and 100 (Neynar's max)
+      const clampedLimit = Math.max(1, Math.min(100, limit));
+
+      let url = `/farcaster/following?fid=${fid}&limit=${clampedLimit}`;
+      if (cursor) {
+        url += `&cursor=${cursor}`;
+      }
+
+      const data = await this.fetch(url);
+      return {
+        users: data.users || [],
+        next_cursor: data.next?.cursor,
+      };
     } catch (error) {
       console.error('Error fetching following:', error);
+      return { users: [] };
+    }
+  }
+
+  // Get ALL user's following (handles pagination automatically)
+  async getAllUserFollowing(fid: number, maxLimit: number = 500): Promise<NeynarUser[]> {
+    try {
+      const allUsers: NeynarUser[] = [];
+      let cursor: string | undefined;
+      let hasMore = true;
+
+      while (hasMore && allUsers.length < maxLimit) {
+        const remaining = maxLimit - allUsers.length;
+        const batchLimit = Math.min(100, remaining);
+
+        const result = await this.getUserFollowing(fid, batchLimit, cursor);
+        allUsers.push(...result.users);
+
+        cursor = result.next_cursor;
+        hasMore = !!cursor && allUsers.length < maxLimit;
+
+        // Small delay to avoid rate limiting
+        if (hasMore) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+      }
+
+      return allUsers;
+    } catch (error) {
+      console.error('Error fetching all following:', error);
       return [];
     }
   }
