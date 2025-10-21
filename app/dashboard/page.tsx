@@ -1,0 +1,470 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useFarcasterAuth } from '@/components/providers/FarcasterAuthProvider';
+import { Navigation } from '@/components/shared/Navigation';
+import Image from 'next/image';
+import Link from 'next/link';
+import { apiClient } from '@/lib/api-client';
+import { getTraitColor, type Trait } from '@/lib/constants/traits';
+import { LevelProgress } from '@/components/dashboard/LevelProgress';
+import { Achievements } from '@/components/dashboard/Achievements';
+
+interface MatchStats {
+  total: number;
+  pending: number;
+  accepted: number;
+  asCreator: number;
+}
+
+interface ProfileData {
+  bio: string;
+  traits: string[];
+}
+
+export default function Dashboard() {
+  const router = useRouter();
+  const { user, isAuthenticated, loading } = useFarcasterAuth();
+  const [stats, setStats] = useState<MatchStats>({
+    total: 0,
+    pending: 0,
+    accepted: 0,
+    asCreator: 0,
+  });
+  const [profile, setProfile] = useState<ProfileData>({ bio: '', traits: [] });
+  const [loadingStats, setLoadingStats] = useState(true);
+  const [loadingProfile, setLoadingProfile] = useState(true);
+
+  useEffect(() => {
+    if (!loading && !isAuthenticated) {
+      router.push('/');
+    }
+  }, [isAuthenticated, loading, router]);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchStats();
+      fetchProfile();
+    }
+  }, [isAuthenticated]);
+
+  // Refetch profile when page becomes visible (e.g., returning from edit page)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden && isAuthenticated) {
+        console.log('[Dashboard] Page visible, refreshing profile...');
+        fetchProfile();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // Also refetch when window regains focus
+    const handleFocus = () => {
+      if (isAuthenticated) {
+        console.log('[Dashboard] Window focused, refreshing profile...');
+        fetchProfile();
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [isAuthenticated]);
+
+  // Refetch profile on route change (e.g., navigating back from edit page)
+  useEffect(() => {
+    if (isAuthenticated) {
+      console.log('[Dashboard] Route mounted/changed, refreshing profile...');
+      fetchProfile();
+    }
+  }, [router, isAuthenticated]);
+
+  // Listen for profile-updated events from Edit Profile page
+  useEffect(() => {
+    const handleProfileUpdate = (event: CustomEvent) => {
+      console.log('[Dashboard] Profile update event received, updating state...');
+      if (event.detail && isAuthenticated) {
+        // Update profile state directly from the event
+        setProfile({
+          bio: event.detail.bio || '',
+          traits: event.detail.traits || [],
+        });
+        console.log('[Dashboard] Profile state updated:', event.detail);
+      }
+    };
+
+    window.addEventListener('profile-updated', handleProfileUpdate as EventListener);
+
+    return () => {
+      window.removeEventListener('profile-updated', handleProfileUpdate as EventListener);
+    };
+  }, [isAuthenticated]);
+
+  const fetchStats = async () => {
+    try {
+      const data = await apiClient.get<{ matches: any[] }>('/api/matches');
+
+      if (data.matches) {
+        const matches = data.matches;
+        const stats: MatchStats = {
+          total: matches.length,
+          pending: matches.filter((m: any) => m.status === 'pending').length,
+          accepted: matches.filter((m: any) => m.status === 'accepted').length,
+          asCreator: matches.filter((m: any) => m.created_by_fid === user?.fid)
+            .length,
+        };
+        setStats(stats);
+      }
+    } catch (error) {
+      console.error('Error fetching stats:', error);
+    } finally {
+      setLoadingStats(false);
+    }
+  };
+
+  const fetchProfile = async () => {
+    try {
+      const data = await apiClient.get<ProfileData>('/api/profile');
+      setProfile({
+        bio: data.bio || '',
+        traits: data.traits || [],
+      });
+    } catch (error) {
+      console.error('Error fetching profile:', error);
+      // Silently fail - display nothing if profile data unavailable
+      setProfile({ bio: '', traits: [] });
+    } finally {
+      setLoadingProfile(false);
+    }
+  };
+
+  if (loading || !user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <Navigation />
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Profile Header */}
+        <div className="bg-white rounded-lg shadow-md p-6 mb-8">
+          <div className="flex items-start justify-between mb-4">
+            <div className="flex items-start space-x-4 flex-1">
+              {user.pfpUrl && (
+                <Image
+                  src={user.pfpUrl}
+                  alt={user.username}
+                  width={80}
+                  height={80}
+                  className="rounded-full"
+                />
+              )}
+              <div className="flex-1">
+                <div className="flex items-center gap-3">
+                  <h1 className="text-3xl font-bold text-gray-900">
+                    {user.displayName}
+                  </h1>
+                  <Link
+                    href="/profile/edit"
+                    className="px-3 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
+                  >
+                    Edit Profile
+                  </Link>
+                </div>
+                <p className="text-lg text-gray-600">@{user.username}</p>
+
+                {/* Bio - from fetched profile data */}
+                {!loadingProfile && profile.bio && (
+                  <p className="mt-2 text-gray-700 max-w-2xl break-words line-clamp-3">{profile.bio}</p>
+                )}
+
+                {/* Loading state for profile */}
+                {loadingProfile && (
+                  <div className="mt-2 h-6 bg-gray-100 rounded animate-pulse w-64"></div>
+                )}
+
+                {/* Trait Cards - from fetched profile data */}
+                {!loadingProfile && profile.traits && profile.traits.length > 0 && (
+                  <div className="mt-3">
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+                      Personal Traits
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {profile.traits.map((trait) => (
+                        <span
+                          key={trait}
+                          className={`px-3 py-1 rounded-lg text-xs font-medium border ${getTraitColor(
+                            trait as Trait
+                          )}`}
+                        >
+                          {trait}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Loading state for traits */}
+                {loadingProfile && (
+                  <div className="mt-3">
+                    <div className="h-4 bg-gray-100 rounded animate-pulse w-32 mb-2"></div>
+                    <div className="flex flex-wrap gap-2">
+                      {[1, 2, 3, 4, 5].map((i) => (
+                        <div
+                          key={i}
+                          className="h-7 w-20 bg-gray-100 rounded-lg animate-pulse"
+                        ></div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Level Progress Bar */}
+                <LevelProgress />
+              </div>
+            </div>
+
+            {/* User Code Badge */}
+            {user.userCode ? (
+              <div className="bg-gradient-to-r from-purple-100 to-blue-100 rounded-lg p-4 border-2 border-purple-200">
+                <div className="text-center">
+                  <p className="text-xs font-semibold text-purple-700 uppercase tracking-wider mb-1">
+                    User ID
+                  </p>
+                  <p className="text-2xl font-bold text-purple-900 font-mono tracking-widest">
+                    {user.userCode}
+                  </p>
+                  <p className="text-xs text-purple-600 mt-1">
+                    10-digit unique code
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="bg-yellow-50 rounded-lg p-4 border-2 border-yellow-200">
+                <div className="text-center">
+                  <p className="text-xs font-semibold text-yellow-700 uppercase tracking-wider mb-1">
+                    User ID
+                  </p>
+                  <p className="text-sm text-yellow-700 font-semibold">
+                    Migration Required
+                  </p>
+                  <p className="text-xs text-yellow-600 mt-1">
+                    Run SQL migration in Supabase
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Stats Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+          <div className="bg-white rounded-lg shadow p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Total Matches</p>
+                <p className="text-3xl font-bold text-gray-900">
+                  {loadingStats ? '...' : stats.total}
+                </p>
+              </div>
+              <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                <svg
+                  className="w-6 h-6 text-purple-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+                  />
+                </svg>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg shadow p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Pending</p>
+                <p className="text-3xl font-bold text-yellow-600">
+                  {loadingStats ? '...' : stats.pending}
+                </p>
+              </div>
+              <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
+                <svg
+                  className="w-6 h-6 text-yellow-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg shadow p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Accepted</p>
+                <p className="text-3xl font-bold text-green-600">
+                  {loadingStats ? '...' : stats.accepted}
+                </p>
+              </div>
+              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                <svg
+                  className="w-6 h-6 text-green-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg shadow p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Created</p>
+                <p className="text-3xl font-bold text-blue-600">
+                  {loadingStats ? '...' : stats.asCreator}
+                </p>
+              </div>
+              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                <svg
+                  className="w-6 h-6 text-blue-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                  />
+                </svg>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Achievements Section */}
+        <div className="mb-8">
+          <Achievements />
+        </div>
+
+        {/* Quick Actions */}
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <h2 className="text-xl font-bold text-gray-900 mb-4">
+            Quick Actions
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Link
+              href="/mini/create"
+              className="flex items-center p-4 border-2 border-purple-200 rounded-lg hover:border-purple-400 hover:bg-purple-50 transition-colors group"
+            >
+              <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mr-4 group-hover:bg-purple-200">
+                <svg
+                  className="w-6 h-6 text-purple-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 4v16m8-8H4"
+                  />
+                </svg>
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-900">
+                  Create New Match
+                </h3>
+                <p className="text-sm text-gray-600">
+                  Introduce two friends from your network
+                </p>
+              </div>
+            </Link>
+
+            <Link
+              href="/mini/inbox"
+              className="flex items-center p-4 border-2 border-blue-200 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition-colors group"
+            >
+              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mr-4 group-hover:bg-blue-200">
+                <svg
+                  className="w-6 h-6 text-blue-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"
+                  />
+                </svg>
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-900">View Inbox</h3>
+                <p className="text-sm text-gray-600">
+                  Check your matches and messages
+                </p>
+              </div>
+            </Link>
+          </div>
+        </div>
+
+        {/* Welcome Message */}
+        {stats.total === 0 && !loadingStats && (
+          <div className="mt-8 bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg p-8 text-center">
+            <h3 className="text-2xl font-bold text-gray-900 mb-2">
+              Welcome to Meet Shipper!
+            </h3>
+            <p className="text-gray-600 mb-6">
+              You haven't created any matches yet. Get started by introducing
+              two friends from your Farcaster network.
+            </p>
+            <Link
+              href="/mini/create"
+              className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
+            >
+              Create Your First Match
+            </Link>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
