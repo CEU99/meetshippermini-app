@@ -63,6 +63,7 @@ export default function Inbox() {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [currentTime, setCurrentTime] = useState(Date.now());
+  const [chatRoomMap, setChatRoomMap] = useState<Map<string, string>>(new Map()); // matchId -> roomId
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -93,6 +94,12 @@ export default function Inbox() {
 
       if (data.matches) {
         setMatches(data.matches);
+
+        // Fetch chat room IDs for accepted matches
+        const acceptedMatches = data.matches.filter(m => m.status === 'accepted' || m.status === 'completed');
+        if (acceptedMatches.length > 0) {
+          fetchChatRooms(acceptedMatches);
+        }
       }
     } catch (error) {
       console.error('Error fetching matches:', error);
@@ -101,10 +108,37 @@ export default function Inbox() {
     }
   };
 
+  const fetchChatRooms = async (matches: Match[]) => {
+    try {
+      // Fetch chat rooms via Supabase client
+      const { data: chatRooms, error } = await apiClient.get<any>('/api/chat/rooms/by-matches', {
+        matchIds: matches.map(m => m.id)
+      }).catch(async () => {
+        // Fallback: use supabase directly
+        const { supabase: sb } = await import('@/lib/supabase');
+        return sb
+          .from('chat_rooms')
+          .select('id, match_id')
+          .in('match_id', matches.map(m => m.id));
+      });
+
+      if (chatRooms) {
+        const newMap = new Map<string, string>();
+        const rooms = Array.isArray(chatRooms) ? chatRooms : chatRooms.data || [];
+        rooms.forEach((room: any) => {
+          newMap.set(room.match_id, room.id);
+        });
+        setChatRoomMap(newMap);
+      }
+    } catch (error) {
+      console.error('Error fetching chat rooms:', error);
+    }
+  };
+
   const handleRespond = async (matchId: string, response: 'accept' | 'decline', reason?: string) => {
     setActionLoading(true);
     try {
-      const data = await apiClient.post<{ match: Match; meetingLink?: string }>(
+      const data = await apiClient.post<{ match: Match; chatRoomId?: string }>(
         `/api/matches/${matchId}/respond`,
         { response, reason }
       );
@@ -117,9 +151,9 @@ export default function Inbox() {
         setSelectedMatch(data.match);
       }
 
-      // Show meeting link if both accepted
-      if (data.meetingLink) {
-        alert(`Meeting scheduled! Link: ${data.meetingLink}`);
+      // Store chat room ID if both accepted
+      if (data.chatRoomId) {
+        setChatRoomMap(prev => new Map(prev).set(matchId, data.chatRoomId!));
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -552,92 +586,55 @@ export default function Inbox() {
                     </div>
                   )}
 
-                  {/* Meeting Link & Completion */}
-                  {selectedMatch.status === 'accepted' && selectedMatch.meeting_link && (() => {
-                    const timeInfo = getMeetingTimeInfo(selectedMatch);
-                    const isRoomClosed = timeInfo.status === 'closed' || timeInfo.status === 'expired';
+                  {/* Chat Room Access */}
+                  {(selectedMatch.status === 'accepted' || selectedMatch.status === 'completed') && (() => {
+                    const chatRoomId = chatRoomMap.get(selectedMatch.id);
 
                     return (
                       <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                        <h4 className="font-semibold text-green-900 mb-2">Meeting Scheduled!</h4>
+                        <h4 className="font-semibold text-green-900 mb-2">
+                          {selectedMatch.status === 'completed' ? 'Meeting Completed!' : 'Chat Room Ready!'}
+                        </h4>
                         <p className="text-sm text-green-800 mb-3">
-                          Both parties have accepted. Your meeting is ready!
+                          Both parties have accepted. Your chat room is ready to use!
                         </p>
 
                         {/* 2-Hour Rule Message */}
-                        {timeInfo.status === 'scheduled' && (
+                        {selectedMatch.status === 'accepted' && (
                           <div className="bg-blue-50 border border-blue-300 rounded-md p-3 mb-3">
                             <p className="text-sm text-blue-800">
-                              ⏱️ <strong>Important:</strong> After someone joins the meeting, you&apos;ll have 2 hours before the room automatically closes.
+                              ⏱️ <strong>Important:</strong> The 2-hour countdown will start as soon as either person enters the chat room or sends the first message. After 2 hours, the room will auto-close (read-only).
                             </p>
                           </div>
                         )}
 
-                        {/* Countdown Timer */}
-                        {timeInfo.status === 'in_progress' && timeInfo.timeRemaining && (
-                          <div className="bg-yellow-50 border border-yellow-300 rounded-md p-3 mb-3">
-                            <p className="text-sm text-yellow-800">
-                              ⏳ <strong>Time remaining:</strong> {timeInfo.timeRemaining}
-                            </p>
-                            <p className="text-xs text-yellow-700 mt-1">
-                              Room will automatically close when time expires.
-                            </p>
-                          </div>
-                        )}
-
-                        {/* Room Closed Message */}
-                        {isRoomClosed && (
-                          <div className="bg-red-50 border border-red-300 rounded-md p-3 mb-3">
-                            <p className="text-sm text-red-800">
-                              🔒 <strong>Meeting room closed.</strong> The 2-hour window has expired.
+                        {/* Completed Message */}
+                        {selectedMatch.status === 'completed' && (
+                          <div className="bg-blue-50 border border-blue-300 rounded-md p-3 mb-3">
+                            <p className="text-sm text-blue-800">
+                              ✅ This meeting has been marked as completed. You can still access the chat history.
                             </p>
                           </div>
                         )}
 
                         <div className="flex space-x-3">
-                          <a
-                            href={selectedMatch.meeting_link}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className={`inline-block px-6 py-2 rounded-md font-medium ${
-                              isRoomClosed
-                                ? 'bg-gray-300 text-gray-500 cursor-not-allowed pointer-events-none'
-                                : 'bg-green-600 text-white hover:bg-green-700'
-                            }`}
-                          >
-                            {isRoomClosed ? 'Room Closed' : 'Join Meeting'}
-                          </a>
-                          {!selectedMatch.a_completed || !selectedMatch.b_completed ? (
+                          {chatRoomId ? (
                             <button
-                              onClick={() => handleComplete(selectedMatch.id)}
-                              disabled={actionLoading || (user && ((selectedMatch.user_a_fid === user.fid && selectedMatch.a_completed) || (selectedMatch.user_b_fid === user.fid && selectedMatch.b_completed)))}
-                              className="bg-yellow-500 text-white px-6 py-2 rounded-md hover:bg-yellow-600 disabled:bg-gray-300 disabled:cursor-not-allowed font-medium"
+                              onClick={() => router.push(`/mini/chat/${chatRoomId}`)}
+                              className="inline-block px-6 py-2 rounded-md font-medium bg-green-600 text-white hover:bg-green-700"
                             >
-                              {actionLoading ? 'Processing...' :
-                               (user && ((selectedMatch.user_a_fid === user.fid && selectedMatch.a_completed) || (selectedMatch.user_b_fid === user.fid && selectedMatch.b_completed)))
-                               ? 'Marked as Completed'
-                               : 'Meeting Completed'}
+                              Open Chat
                             </button>
-                          ) : null}
+                          ) : (
+                            <div className="text-sm text-gray-600">
+                              Loading chat room...
+                            </div>
+                          )}
                         </div>
                       </div>
                     );
                   })()}
 
-                  {/* Completed Meeting Message */}
-                  {selectedMatch.status === 'completed' && (
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                      <h4 className="font-semibold text-blue-900 mb-2">✅ Meeting Completed!</h4>
-                      <p className="text-sm text-blue-800">
-                        Both parties have confirmed that the meeting took place.
-                      </p>
-                      {selectedMatch.completed_at && (
-                        <p className="text-xs text-blue-600 mt-2">
-                          Completed on {new Date(selectedMatch.completed_at).toLocaleDateString()} at {new Date(selectedMatch.completed_at).toLocaleTimeString()}
-                        </p>
-                      )}
-                    </div>
-                  )}
 
                   {/* Created by system */}
                   {selectedMatch.created_by === 'system' && (

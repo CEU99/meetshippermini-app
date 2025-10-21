@@ -24,7 +24,8 @@
       "Bash(pnpm run build:*)",
       "Bash(git checkout app/**/*.tsx components/**/*.tsx)",
       "Bash(pnpm lint:*)",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(node scripts/diagnose-env.js:*)"
     ],
     "deny": [],
     "ask": []

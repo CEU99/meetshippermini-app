@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { getServerSupabase } from '@/lib/supabase';
-import { scheduleMatch } from '@/lib/services/meeting-service';
+import { ensureChatRoom, getChatRoomByMatchId } from '@/lib/services/chat-service';
 
 /**
  * POST /api/matches/:id/respond
@@ -175,8 +175,8 @@ export async function POST(
       b_accepted: updatedMatch.b_accepted,
     });
 
-    // Initialize meetingLink variable for use in all code paths
-    let meetingLink: string | undefined;
+    // Initialize chatRoomId variable for use in all code paths
+    let chatRoomId: string | undefined;
 
     // Create system messages for accept/decline
     if (response === 'decline') {
@@ -207,21 +207,21 @@ export async function POST(
       // Acceptance
       const accepterName = session.username || `User ${userFid}`;
 
-      // If both accepted, schedule the meeting
+      // If both accepted, create chat room
       if (updatedMatch.a_accepted && updatedMatch.b_accepted) {
-        console.log(`[Match] Both users accepted, scheduling meeting for match ${id}`);
-        const scheduleResult = await scheduleMatch(id);
+        console.log(`[Match] Both users accepted, creating chat room for match ${id}`);
 
-        if (scheduleResult.success) {
-          meetingLink = scheduleResult.meetingLink;
-          console.log(`[Match] Meeting scheduled: ${meetingLink}`);
+        try {
+          const chatRoom = await ensureChatRoom(id, match.user_a_fid, match.user_b_fid);
+          chatRoomId = chatRoom.id;
+          console.log(`[Match] Chat room created: ${chatRoomId}`);
 
-          // Send system messages with meeting link to BOTH users
+          // Send system messages with chat room notification to BOTH users
           // Message 1: For User A
           await supabase.from('messages').insert({
             match_id: id,
             sender_fid: match.user_a_fid,
-            content: `🎉 Match accepted! Both parties agreed to meet. Your meeting link: ${meetingLink}`,
+            content: `🎉 Match accepted! Both parties agreed to meet. Your chat room is ready. Click "Open Chat" to start your conversation. Note: Chat room will auto-close 2 hours after first entry.`,
             is_system_message: true,
           });
 
@@ -229,24 +229,24 @@ export async function POST(
           await supabase.from('messages').insert({
             match_id: id,
             sender_fid: match.user_b_fid,
-            content: `🎉 Match accepted! Both parties agreed to meet. Your meeting link: ${meetingLink}`,
+            content: `🎉 Match accepted! Both parties agreed to meet. Your chat room is ready. Click "Open Chat" to start your conversation. Note: Chat room will auto-close 2 hours after first entry.`,
             is_system_message: true,
           });
-        } else {
-          console.error(`[Match] Failed to schedule meeting: ${scheduleResult.error}`);
+        } catch (error) {
+          console.error(`[Match] Failed to create chat room:`, error);
 
-          // Send system messages about acceptance without meeting link to both users
+          // Send system messages about acceptance without chat room
           await supabase.from('messages').insert([
             {
               match_id: id,
               sender_fid: match.user_a_fid,
-              content: `Match accepted by both parties! Meeting link generation in progress...`,
+              content: `Match accepted by both parties! Chat room creation in progress...`,
               is_system_message: true,
             },
             {
               match_id: id,
               sender_fid: match.user_b_fid,
-              content: `Match accepted by both parties! Meeting link generation in progress...`,
+              content: `Match accepted by both parties! Chat room creation in progress...`,
               is_system_message: true,
             }
           ]);
@@ -277,7 +277,7 @@ export async function POST(
       return NextResponse.json({
         success: true,
         match: updatedMatch,
-        meetingLink,
+        chatRoomId,
       });
     }
 
@@ -286,7 +286,7 @@ export async function POST(
     return NextResponse.json({
       success: true,
       match: matchDetails || updatedMatch,
-      meetingLink,
+      chatRoomId,
     });
   } catch (error) {
     console.error('[API] Respond error (uncaught):', {
