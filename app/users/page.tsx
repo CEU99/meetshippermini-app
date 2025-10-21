@@ -1,13 +1,14 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useFarcasterAuth } from '@/components/providers/FarcasterAuthProvider';
 import { Navigation } from '@/components/shared/Navigation';
 import Link from 'next/link';
 import { apiClient } from '@/lib/api-client';
 import { supabase } from '@/lib/supabase';
 import { Avatar } from '@/components/shared/Avatar';
+import { Suspense } from 'react';
 
 interface User {
   fid: number;
@@ -30,8 +31,9 @@ interface UsersResponse {
   };
 }
 
-export default function UsersPage() {
+function UsersPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { isAuthenticated, loading: authLoading } = useFarcasterAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -45,6 +47,9 @@ export default function UsersPage() {
     total: 0,
     totalPages: 0,
   });
+
+  // Get slot parameter from URL
+  const slotParam = searchParams.get('slot');
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -166,6 +171,41 @@ export default function UsersPage() {
             Browse all registered users in the Meet Shipper community
           </p>
         </div>
+
+        {/* Slot Selection Banner */}
+        {slotParam && (slotParam === 'A' || slotParam === 'B') && (
+          <div className="mb-6 bg-purple-50 border border-purple-200 rounded-lg p-4">
+            <div className="flex items-start gap-3">
+              <svg
+                className="w-5 h-5 text-purple-600 flex-shrink-0 mt-0.5"
+                fill="currentColor"
+                viewBox="0 0 20 20"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+                  clipRule="evenodd"
+                />
+              </svg>
+              <div className="flex-1">
+                <h3 className="text-sm font-semibold text-purple-900">
+                  Selecting User {slotParam} for Suggest Match
+                </h3>
+                <p className="text-sm text-purple-800 mt-1">
+                  Click <strong className="font-semibold">+ Suggest Match</strong> on any profile
+                  below to select them as User {slotParam}. You'll be redirected back to the
+                  Suggest Match page.
+                </p>
+              </div>
+              <Link
+                href="/mini/suggest"
+                className="text-sm text-purple-600 hover:text-purple-800 underline whitespace-nowrap"
+              >
+                Cancel
+              </Link>
+            </div>
+          </div>
+        )}
 
         {/* Search Bar */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
@@ -460,5 +500,22 @@ export default function UsersPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function UsersPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto"></div>
+            <p className="mt-4 text-gray-600">Loading...</p>
+          </div>
+        </div>
+      }
+    >
+      <UsersPageContent />
+    </Suspense>
   );
 }

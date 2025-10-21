@@ -12,6 +12,7 @@ export function Navigation() {
   const navItems = [
     { href: '/dashboard', label: 'Dashboard' },
     { href: '/mini/create', label: 'Create Match' },
+    { href: '/mini/suggest', label: 'Suggest Match' },
     { href: '/mini/inbox', label: 'Inbox' },
     { href: '/users', label: 'Explore Users' },
   ];

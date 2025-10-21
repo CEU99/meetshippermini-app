@@ -32,9 +32,41 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Validate numeric FIDs
+    if (typeof userAFid !== 'number' || typeof userBFid !== 'number') {
+      return NextResponse.json(
+        { error: 'Invalid FID format: userAFid and userBFid must be numeric' },
+        { status: 400 }
+      );
+    }
+
+    if (isNaN(userAFid) || isNaN(userBFid) || userAFid <= 0 || userBFid <= 0) {
+      return NextResponse.json(
+        { error: 'Invalid FID: FIDs must be positive numbers' },
+        { status: 400 }
+      );
+    }
+
+    // Validate A ≠ B
     if (userAFid === userBFid) {
       return NextResponse.json(
-        { error: 'Cannot suggest a match between the same user' },
+        { error: 'User A and User B must be different people' },
+        { status: 400 }
+      );
+    }
+
+    // Validate message length (20-100 characters)
+    const trimmedMessage = message.trim();
+    if (trimmedMessage.length < 20) {
+      return NextResponse.json(
+        { error: 'Message must be at least 20 characters' },
+        { status: 400 }
+      );
+    }
+
+    if (trimmedMessage.length > 100) {
+      return NextResponse.json(
+        { error: 'Message must not exceed 100 characters' },
         { status: 400 }
       );
     }
@@ -96,7 +128,7 @@ export async function POST(request: NextRequest) {
         created_by_fid: session.fid,
         user_a_fid: userAFid,
         user_b_fid: userBFid,
-        message: message.trim(),
+        message: trimmedMessage,
         status: 'proposed',
       })
       .select()
@@ -104,6 +136,10 @@ export async function POST(request: NextRequest) {
 
     if (createError) {
       console.error('[API] Error creating suggestion:', createError);
+      console.error('[API] Error code:', createError.code);
+      console.error('[API] Error details:', createError.details);
+      console.error('[API] Error hint:', createError.hint);
+      console.error('[API] Error message:', createError.message);
 
       // Check for duplicate suggestion
       if (createError.code === '23505') {
@@ -117,10 +153,23 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      // Check for RLS policy violation
+      if (createError.code === '42501' || createError.message?.includes('policy')) {
+        return NextResponse.json(
+          {
+            error: 'Permission denied',
+            message: 'Unable to create suggestion due to access restrictions',
+            details: createError.message,
+          },
+          { status: 403 }
+        );
+      }
+
       return NextResponse.json(
         {
           error: 'Failed to create suggestion',
           details: createError.message,
+          code: createError.code,
         },
         { status: 500 }
       );

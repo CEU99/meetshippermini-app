@@ -132,7 +132,13 @@ export async function POST(
     }
 
     // Update the match
-    console.log('[API] Respond: Updating match with data:', updateData);
+    console.log('[API] Respond: Updating match with data:', {
+      matchId: id,
+      updateData,
+      currentStatus: match.status,
+      targetStatus: updateData.status || 'unchanged',
+      userRole: isUserA ? 'user_a' : 'user_b',
+    });
 
     const { data: updatedMatch, error: updateError } = await supabase
       .from('matches')

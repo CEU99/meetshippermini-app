@@ -26,7 +26,10 @@
       "Bash(pnpm lint:*)",
       "Bash(git checkout:*)",
       "Bash(node scripts/diagnose-env.js:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(pnpm run dev)",
+      "Bash(node:*)"
     ],
     "deny": [],
     "ask": []
