@@ -138,11 +138,35 @@ export function UserLookup({
               disabled={lookingUpUser || !userInput.trim() || disabled}
               className="px-6 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:bg-gray-300 disabled:cursor-not-allowed font-medium transition-colors"
             >
-              {lookingUpUser ? 'Looking up...' : 'Find User'}
+              {lookingUpUser ? 'Looking up...' : 'Lookup'}
             </button>
           </div>
+
+          {/* Find User button - Navigate to Users */}
+          <button
+            type="button"
+            onClick={() => router.push('/users')}
+            disabled={disabled}
+            className="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 font-medium text-sm disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+          >
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+              />
+            </svg>
+            Find User
+          </button>
+
           <p className="text-sm text-gray-500">
-            Enter a Farcaster ID (FID) like &quot;12345&quot;
+            Enter a Farcaster ID (FID) like &quot;12345&quot; or browse users
           </p>
           {error && (
             <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-md">
@@ -178,13 +202,11 @@ export function UserLookup({
               type="button"
               onClick={() => {
                 if (slot) {
-                  // Navigate to Explore Users with slot parameter
+                  // Navigate to Users page with slot parameter
                   router.push(`/users?slot=${slot.toUpperCase()}`);
                 } else {
-                  // Fallback: just clear the selection
-                  onChange(null);
-                  setUserInput('');
-                  setError('');
+                  // Fallback: Navigate to Users without slot
+                  router.push('/users');
                 }
               }}
               disabled={disabled}
