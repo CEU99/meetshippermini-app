@@ -91,6 +91,12 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  experimental: {
+  turbo: {
+    root: '/Users/Cengizhan/Desktop/meetshippermini-app',
+  },
+},
+
 };
 
 export default nextConfig;

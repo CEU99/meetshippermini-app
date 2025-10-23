@@ -29,7 +29,18 @@
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(pnpm run dev)",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "Bash(psql:*)",
+      "Bash(if [ -z \"$DATABASE_URL\" ])",
+      "Bash(then echo \"ERROR: DATABASE_URL not set. Please run: export DATABASE_URL=''your_supabase_connection_string''\")",
+      "Bash(exit 1)",
+      "Bash(if [ -f .env.local ])",
+      "Bash(then grep -E \"(DATABASE_URL|SUPABASE)\" .env.local)",
+      "Bash(elif [ -f .env ])",
+      "Bash(then grep -E \"(DATABASE_URL|SUPABASE)\" .env)",
+      "Bash(else echo \"No .env file found\")",
+      "Bash(then grep \"DATABASE_URL\" .env.local)",
+      "Bash(then grep \"DATABASE_URL\" .env)"
     ],
     "deny": [],
     "ask": []

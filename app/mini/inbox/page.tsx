@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useFarcasterAuth } from '@/components/providers/FarcasterAuthProvider';
 import { Navigation } from '@/components/shared/Navigation';
 import Image from 'next/image';
-import { apiClient } from '@/lib/api-client';
+import { apiClient, declineAllMatch } from '@/lib/api-client';
 import { Trait } from '@/lib/constants/traits';
 
 interface MatchRationale {
@@ -206,22 +206,61 @@ export default function Inbox() {
   const handleRespond = async (matchId: string, response: 'accept' | 'decline', reason?: string) => {
     setActionLoading(true);
     try {
-      const data = await apiClient.post<{ match: Match; chatRoomId?: string }>(
-        `/api/matches/${matchId}/respond`,
-        { response, reason }
-      );
+      // Use the new decline-all endpoint for decline actions
+      // This provides a permanent fix for the cooldown conflict issue
+      if (response === 'decline') {
+        const result = await declineAllMatch(matchId);
 
-      // Refresh matches list
-      await fetchMatches();
+        if (!result.success) {
+          // Handle specific error cases
+          if (result.reason === 'already_terminal') {
+            alert(result.message || 'This match is already closed.');
+          } else {
+            alert(result.message || 'Failed to decline match. Please try again.');
+          }
+          return;
+        }
 
-      // Update selected match
-      if (selectedMatch?.id === matchId) {
-        setSelectedMatch(data.match);
-      }
+        // Optimistically update UI - move to declined
+        setMatches(prev => prev.map(m =>
+          m.id === matchId
+            ? { ...m, status: 'declined' as const, a_accepted: false, b_accepted: false }
+            : m
+        ));
 
-      // Store chat room ID if both accepted
-      if (data.chatRoomId) {
-        setChatRoomMap(prev => new Map(prev).set(matchId, data.chatRoomId!));
+        if (selectedMatch?.id === matchId) {
+          setSelectedMatch(prev => prev ? {
+            ...prev,
+            status: 'declined',
+            a_accepted: false,
+            b_accepted: false
+          } : null);
+        }
+
+        // Show success message
+        alert('Match declined for both participants.');
+
+        // Refresh matches list to get updated state
+        await fetchMatches();
+      } else {
+        // Accept uses the original respond endpoint
+        const data = await apiClient.post<{ match: Match; chatRoomId?: string }>(
+          `/api/matches/${matchId}/respond`,
+          { response, reason }
+        );
+
+        // Refresh matches list
+        await fetchMatches();
+
+        // Update selected match
+        if (selectedMatch?.id === matchId) {
+          setSelectedMatch(data.match);
+        }
+
+        // Store chat room ID if both accepted
+        if (data.chatRoomId) {
+          setChatRoomMap(prev => new Map(prev).set(matchId, data.chatRoomId!));
+        }
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -294,8 +333,17 @@ export default function Inbox() {
     return null;
   };
 
+  // Helper to check if a match is in a terminal state
+  const isTerminalStatus = (status: string): boolean => {
+    return status === 'declined' || status === 'cancelled' || status === 'completed';
+  };
+
   const needsMyAction = (match: Match): boolean => {
     if (!user) return false;
+
+    // Terminal matches never need action
+    if (isTerminalStatus(match.status)) return false;
+
     const isUserA = match.user_a_fid === user.fid;
     const isUserB = match.user_b_fid === user.fid;
 
@@ -634,7 +682,7 @@ export default function Inbox() {
                             {getStatusLabel(match)}
                           </span>
                         </div>
-                        {needsMyAction(match) && (
+                        {!isTerminalStatus(match.status) && needsMyAction(match) && (
                           <div className="mt-2">
                             <span className="inline-block px-2 py-1 rounded text-xs font-bold bg-red-100 text-red-700 border border-red-200">
                               Action needed
@@ -715,7 +763,7 @@ export default function Inbox() {
                   )}
 
                   {/* Action Buttons */}
-                  {needsMyAction(selectedMatch) && (
+                  {!isTerminalStatus(selectedMatch.status) && needsMyAction(selectedMatch) && (
                     <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
                       <p className="text-sm text-gray-700 mb-3 font-medium">
                         Do you want to connect with this person?
@@ -723,14 +771,14 @@ export default function Inbox() {
                       <div className="flex space-x-3">
                         <button
                           onClick={() => handleRespond(selectedMatch.id, 'accept')}
-                          disabled={actionLoading}
+                          disabled={isTerminalStatus(selectedMatch.status) || actionLoading}
                           className="flex-1 bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 disabled:bg-gray-300 font-medium"
                         >
                           {actionLoading ? 'Processing...' : 'Accept'}
                         </button>
                         <button
                           onClick={() => handleRespond(selectedMatch.id, 'decline')}
-                          disabled={actionLoading}
+                          disabled={isTerminalStatus(selectedMatch.status) || actionLoading}
                           className="flex-1 bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 disabled:bg-gray-300 font-medium"
                         >
                           Decline

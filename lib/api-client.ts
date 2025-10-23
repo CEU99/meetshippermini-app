@@ -105,3 +105,16 @@ export const apiClient = {
 
   delete: <T = unknown>(url: string) => apiFetch<T>(url, { method: 'DELETE' }),
 };
+
+/**
+ * Decline a match for both participants (bilateral decline)
+ * This is the new permanent fix for the cooldown conflict issue
+ */
+export async function declineAllMatch(matchId: string): Promise<{
+  success: boolean;
+  reason?: string;
+  message?: string;
+  match?: unknown;
+}> {
+  return apiClient.post(`/api/matches/${matchId}/decline-all`);
+}
