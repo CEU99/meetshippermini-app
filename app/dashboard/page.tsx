@@ -11,6 +11,10 @@ import { getTraitColor, type Trait } from '@/lib/constants/traits';
 import { LevelProgress } from '@/components/dashboard/LevelProgress';
 import { Achievements } from '@/components/dashboard/Achievements';
 import { FarcasterFollowing } from '@/components/dashboard/FarcasterFollowing';
+import { useAttestationStatus } from '@/lib/hooks/useAttestationStatus';
+import VerifiedStats from '@/components/dashboard/VerifiedStats';
+import VerifiedInsights from '@/components/dashboard/VerifiedInsights';
+import GrowthDashboard from '@/components/dashboard/GrowthDashboard';
 
 interface MatchStats {
   total: number;
@@ -27,6 +31,7 @@ interface ProfileData {
 export default function Dashboard() {
   const router = useRouter();
   const { user, isAuthenticated, loading } = useFarcasterAuth();
+  const { isVerified, isLoading: isCheckingVerification } = useAttestationStatus();
   const [stats, setStats] = useState<MatchStats>({
     total: 0,
     pending: 0,
@@ -36,6 +41,7 @@ export default function Dashboard() {
   const [profile, setProfile] = useState<ProfileData>({ bio: '', traits: [] });
   const [loadingStats, setLoadingStats] = useState(true);
   const [loadingProfile, setLoadingProfile] = useState(true);
+  const [showVerifiedTooltip, setShowVerifiedTooltip] = useState(false);
 
   useEffect(() => {
     if (!loading && !isAuthenticated) {
@@ -174,7 +180,7 @@ export default function Dashboard() {
                 />
               )}
               <div className="flex-1">
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 flex-wrap">
                   <h1 className="text-3xl font-bold text-gray-900">
                     {user.displayName}
                   </h1>
@@ -185,7 +191,49 @@ export default function Dashboard() {
                     Edit Profile
                   </Link>
                 </div>
-                <p className="text-lg text-gray-600">@{user.username}</p>
+                <div className="flex items-center gap-2 mt-1">
+                  <p className="text-lg text-gray-600">@{user.username}</p>
+
+                  {/* Verification Badge */}
+                  {!isCheckingVerification && (
+                    <div className="relative inline-block">
+                      {isVerified ? (
+                        <div
+                          className="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-md bg-green-50 text-green-700 border border-green-200 cursor-help"
+                          onMouseEnter={() => setShowVerifiedTooltip(true)}
+                          onMouseLeave={() => setShowVerifiedTooltip(false)}
+                        >
+                          <span className="mr-1">✅</span> Verified On-Chain
+
+                          {/* Tooltip */}
+                          {showVerifiedTooltip && (
+                            <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-md whitespace-nowrap shadow-lg z-50 animate-fade-in">
+                              Your Farcaster username is verified on-chain
+                              <div className="absolute top-full left-1/2 transform -translate-x-1/2 -mt-1">
+                                <div className="border-4 border-transparent border-t-gray-900"></div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-md bg-gray-100 text-gray-600 border border-gray-200">
+                          <span className="mr-1">⚪</span> Not Verified
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Loading state for verification check */}
+                  {isCheckingVerification && (
+                    <div className="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-md bg-gray-100 text-gray-500">
+                      <svg className="animate-spin h-3 w-3 mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Checking...
+                    </div>
+                  )}
+                </div>
 
                 {/* Bio - from fetched profile data */}
                 {!loadingProfile && profile.bio && (
@@ -386,6 +434,21 @@ export default function Dashboard() {
         {/* Farcaster Following Section */}
         <div className="mb-8">
           <FarcasterFollowing />
+        </div>
+
+        {/* Verified Users Statistics Section */}
+        <div className="mb-8">
+          <VerifiedStats />
+        </div>
+
+        {/* Verified Insights Section */}
+        <div className="mb-8">
+          <VerifiedInsights />
+        </div>
+
+        {/* Growth Dashboard Section */}
+        <div className="mb-8">
+          <GrowthDashboard />
         </div>
 
         {/* Quick Actions */}

@@ -108,3 +108,31 @@ export interface MessageDetail {
   is_system_message: boolean;
   created_at: string;
 }
+
+export interface UserWallet {
+  id: string;
+  fid: number;
+  wallet_address: string;
+  chain_id: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Attestation {
+  id: string;
+  fid: number;
+  username: string;
+  wallet_address: string;
+  tx_hash: string;
+  attestation_uid: string;
+  created_at: string;
+  updated_at: string;
+}
+
+// Helper function to set user context for RLS
+export async function setUserContext(supabaseClient: any, fid: number) {
+  await supabaseClient.rpc('set_config', {
+    name: 'app.current_user_fid',
+    value: fid.toString(),
+  });
+}

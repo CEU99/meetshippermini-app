@@ -40,7 +40,12 @@
       "Bash(then grep -E \"(DATABASE_URL|SUPABASE)\" .env)",
       "Bash(else echo \"No .env file found\")",
       "Bash(then grep \"DATABASE_URL\" .env.local)",
-      "Bash(then grep \"DATABASE_URL\" .env)"
+      "Bash(then grep \"DATABASE_URL\" .env)",
+      "Bash(touch:*)",
+      "Bash(npx tsx:*)",
+      "Bash(pnpm add:*)",
+      "Bash(lsof:*)",
+      "Bash(xargs kill:*)"
     ],
     "deny": [],
     "ask": []
