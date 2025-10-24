@@ -45,7 +45,9 @@
       "Bash(npx tsx:*)",
       "Bash(pnpm add:*)",
       "Bash(lsof:*)",
-      "Bash(xargs kill:*)"
+      "Bash(xargs kill:*)",
+      "Bash(pnpm install)",
+      "Bash(git push:*)"
     ],
     "deny": [],
     "ask": []
