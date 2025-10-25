@@ -1,0 +1,11 @@
+{
+  "name": "MeetShipper",
+  "description": "Connect. Verify. Grow On-Chain. Base Mini App by ULU.",
+  "icon": "https://meetshipper.com/cover.png",
+  "frame": {
+    "url": "https://meetshipper.com/api/frame"
+  },
+  "creator": {
+    "fid": "543581"
+  }
+}
