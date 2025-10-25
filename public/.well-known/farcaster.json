@@ -1,24 +1,28 @@
 {
   "version": "1.0.0",
-  "name": "MeetShipper",
-  "description": "Connect. Verify. Grow On-Chain. Base Mini App by ULU.",
-  "iconUrl": "https://meetshipper.com/cover.png",
-  "homeUrl": "https://meetshipper.com",
-  "imageUrl": "https://meetshipper.com/cover.png",
-  "buttonLabel": "Launch MeetShipper",
-  "theme": {
-    "primaryColor": "#4F46E5",
-    "backgroundColor": "#1E1B4B"
-  },
-  "frame": {
-    "url": "https://meetshipper.com/api/frame"
-  },
-  "creator": {
-    "fid": "543541"
-  },
   "accountAssociation": {
     "header": "eyJmaWQiOjU0MzU4MSwidHlwZSI6ImN1c3RvZHkiLCJrZXkiOiIweDI0Mjc1NjJGYzY2RGNBNDJCNkYxZjM5NDhEMTFhOGNkNjMzZUUzMmUifQ",
     "payload": "eyJkb21haW4iOiJtZWV0c2hpcHBlci5jb20ifQ",
     "signature": "dlEs04zwAZaFF++Ora36BQBTvn61bAhsIRPA4TEBJplHc4IiUqEu19cpKOnFYhNc7R4ZZPN8h+84ieHPC5kR2hw="
+  },
+  "miniApp": {
+    "name": "MeetShipper",
+    "version": "1.0.0",
+    "description": "Connect. Verify. Grow On-Chain. Base Mini App by ULU.",
+    "homeUrl": "https://meetshipper.com",
+    "iconUrl": "https://meetshipper.com/cover.png",
+    "imageUrl": "https://meetshipper.com/cover.png",
+    "splashImageUrl": "https://meetshipper.com/cover.png",
+    "buttonLabel": "Launch MeetShipper",
+    "theme": {
+      "primaryColor": "#4F46E5",
+      "backgroundColor": "#1E1B4B"
+    },
+    "frame": {
+      "url": "https://meetshipper.com/api/frame"
+    },
+    "creator": {
+      "fid": "543541"
+    }
   }
 }
