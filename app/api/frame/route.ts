@@ -56,14 +56,19 @@ function generateFrameHTML(
       <p style="font-size:1.5rem;margin-bottom:2rem;">Base Mini App Frame</p>
       <img src="${image}" alt="Frame Preview" style="max-width:600px;width:90%;border-radius:12px;box-shadow:0 10px 40px rgba(0,0,0,0.3);" />
       <p style="margin-top:2rem;opacity:0.9;">
-        <span 
-          style="color:white;text-decoration:none;cursor:pointer;transition:all 0.3s;"
+        🔗 Open this in Farcaster to interact
+      </p>
+      <p style="margin-top:0.5rem;opacity:0.9;">
+        <a
+          href="https://www.meetshipper.com"
+          target="_blank"
+          rel="noopener noreferrer"
+          style="color:white;text-decoration:none;transition:all 0.3s;"
           onmouseover="this.style.opacity='0.7';this.style.textDecoration='underline';"
           onmouseout="this.style.opacity='1';this.style.textDecoration='none';"
-          onclick="const url='${BASE_URL}/api/frame'; window.open(url, '_blank');"
         >
-          🔗 Open this in Farcaster to interact
-        </span>
+          Go to MeetShipper 🚀
+        </a>
       </p>
     </div>
   </body>
