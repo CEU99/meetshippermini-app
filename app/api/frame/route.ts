@@ -70,6 +70,18 @@ function generateFrameHTML(
           Go to MeetShipper 🚀
         </a>
       </p>
+      <p style="margin-top:0.5rem;opacity:0.9;">
+        <a
+          href="https://www.meetshipper.com/frame"
+          target="_blank"
+          rel="noopener noreferrer"
+          style="color:white;text-decoration:none;transition:all 0.3s;"
+          onmouseover="this.style.opacity='0.7';this.style.textDecoration='underline';"
+          onmouseout="this.style.opacity='1';this.style.textDecoration='none';"
+        >
+          Go to MeetShipper-app   ----
+        </a>
+      </p>
     </div>
   </body>
 </html>`;
