@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { AuthKitProvider, useProfile } from '@farcaster/auth-kit';
 
 // Frame Preview Component
@@ -8,11 +8,15 @@ function FramePreview() {
   const { profile, isAuthenticated } = useProfile();
   const [currentStep, setCurrentStep] = useState<'initial' | 'matching' | 'stats'>('initial');
   const [buttonLoading, setButtonLoading] = useState<number | null>(null);
+  const [frameUrl, setFrameUrl] = useState('https://meetshipper.com/api/frame');
 
-  // Dinamik FRAME_IMAGE tanımı (lokal + prod)
-  const FRAME_IMAGE = process.env.NEXT_PUBLIC_VERCEL_URL
-    ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}/frame/cover.png`
-    : 'http://localhost:3000/frame/cover.png';
+  // Use relative path - Next.js serves files from public/ at root automatically
+  const FRAME_IMAGE = '/cover.png';
+
+  // Update frame URL after component mounts to match current origin
+  useEffect(() => {
+    setFrameUrl(`${window.location.origin}/api/frame`);
+  }, []);
 
   const handleButtonClick = async (buttonIndex: number) => {
     setButtonLoading(buttonIndex);
@@ -159,8 +163,15 @@ function FramePreview() {
               This is a preview of your Farcaster Frame. Share the frame URL in Farcaster to enable
               interactive buttons.
             </p>
-            <div className="mt-4 p-3 bg-black/20 rounded-lg text-xs font-mono break-all">
-              https://meetshipper.vercel.app/api/frame
+            <div className="mt-4 p-3 bg-black/20 rounded-lg">
+              <a
+                href={frameUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs font-mono break-all text-white hover:text-blue-300 hover:underline transition-colors"
+              >
+                🔗 {frameUrl}
+              </a>
             </div>
           </div>
 

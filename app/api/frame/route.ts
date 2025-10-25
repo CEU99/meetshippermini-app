@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 // === CONFIGURATION ===
-const BASE_URL = process.env.VERCEL_URL
-  ? `https://${process.env.VERCEL_URL}`
-  : 'http://localhost:3000';
+const BASE_URL =
+  process.env.NODE_ENV === 'production'
+    ? 'https://meetshipper.com'
+    : 'http://localhost:3000';
 
 const FRAME_IMAGE = `${BASE_URL}/cover.png`;
 
@@ -19,7 +20,9 @@ function generateFrameHTML(
       (btn, idx) => `
     <meta property="fc:frame:button:${idx + 1}" content="${btn.label}" />
     ${btn.action ? `<meta property="fc:frame:button:${idx + 1}:action" content="${btn.action}" />` : ''}
-    ${btn.action === 'post_redirect' ? `<meta property="fc:frame:button:${idx + 1}:target" content="${BASE_URL}/mini/contract-test" />` : ''}`
+    ${btn.action === 'post_redirect'
+      ? `<meta property="fc:frame:button:${idx + 1}:target" content="${BASE_URL}/mini/contract-test" />`
+      : ''}`
     )
     .join('');
 
@@ -52,7 +55,16 @@ function generateFrameHTML(
       <h1 style="font-size:3rem;margin-bottom:1rem;">MeetShipper</h1>
       <p style="font-size:1.5rem;margin-bottom:2rem;">Base Mini App Frame</p>
       <img src="${image}" alt="Frame Preview" style="max-width:600px;width:90%;border-radius:12px;box-shadow:0 10px 40px rgba(0,0,0,0.3);" />
-      <p style="margin-top:2rem;opacity:0.9;">Open this in Farcaster to interact</p>
+      <p style="margin-top:2rem;opacity:0.9;">
+        <span 
+          style="color:white;text-decoration:none;cursor:pointer;transition:all 0.3s;"
+          onmouseover="this.style.opacity='0.7';this.style.textDecoration='underline';"
+          onmouseout="this.style.opacity='1';this.style.textDecoration='none';"
+          onclick="const url='${BASE_URL}/api/frame'; window.open(url, '_blank');"
+        >
+          🔗 Open this in Farcaster to interact
+        </span>
+      </p>
     </div>
   </body>
 </html>`;
@@ -112,7 +124,7 @@ export async function POST(req: NextRequest) {
   const postUrl = `${BASE_URL}/api/frame`;
 
   switch (buttonIndex) {
-    case 1: // "Start Match"
+    case 1:
       const matchHtml = generateFrameHTML(
         FRAME_IMAGE,
         [
@@ -123,11 +135,9 @@ export async function POST(req: NextRequest) {
         postUrl,
         JSON.stringify({ fid, step: 'matching' })
       );
-      return new NextResponse(matchHtml, {
-        headers: { 'Content-Type': 'text/html' },
-      });
+      return new NextResponse(matchHtml, { headers: { 'Content-Type': 'text/html' } });
 
-    case 2: // "View Stats"
+    case 2:
       const statsHtml = generateFrameHTML(
         FRAME_IMAGE,
         [
@@ -138,11 +148,9 @@ export async function POST(req: NextRequest) {
         postUrl,
         JSON.stringify({ fid, step: 'stats' })
       );
-      return new NextResponse(statsHtml, {
-        headers: { 'Content-Type': 'text/html' },
-      });
+      return new NextResponse(statsHtml, { headers: { 'Content-Type': 'text/html' } });
 
-    case 3: // "Verify on Base"
+    case 3:
       return NextResponse.redirect(`${BASE_URL}/mini/contract-test?fid=${fid}`, 302);
 
     default:
@@ -151,7 +159,7 @@ export async function POST(req: NextRequest) {
 }
 
 // === OPTIONS HANDLER ===
-export async function OPTIONS(req: NextRequest) {
+export async function OPTIONS() {
   return new NextResponse(null, {
     status: 200,
     headers: {
