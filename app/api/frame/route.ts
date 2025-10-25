@@ -5,7 +5,7 @@ const BASE_URL = process.env.VERCEL_URL
   ? `https://${process.env.VERCEL_URL}`
   : 'http://localhost:3000';
 
-const FRAME_IMAGE = `${BASE_URL}/frame/cover.png`;
+const FRAME_IMAGE = `${BASE_URL}/cover.png`;
 
 // === FRAME HTML GENERATOR ===
 function generateFrameHTML(
