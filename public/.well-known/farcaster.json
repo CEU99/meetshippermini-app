@@ -1,15 +1,14 @@
 {
-  "name": "MeetShipper",
   "version": "1.0.0",
+  "name": "MeetShipper",
   "description": "Connect. Verify. Grow On-Chain. Base Mini App by ULU.",
-  "icon": "https://meetshipper.com/cover.png",
+  "iconUrl": "https://meetshipper.com/cover.png",
   "homeUrl": "https://meetshipper.com",
   "imageUrl": "https://meetshipper.com/cover.png",
-  "splashImageUrl": "https://meetshipper.com/cover.png",
-  "buttonTitle": "Launch MeetShipper",
+  "buttonLabel": "Launch MeetShipper",
   "theme": {
-    "backgroundColor": "#4F46E5",
-    "textColor": "#FFFFFF"
+    "primaryColor": "#4F46E5",
+    "backgroundColor": "#1E1B4B"
   },
   "frame": {
     "url": "https://meetshipper.com/api/frame"
