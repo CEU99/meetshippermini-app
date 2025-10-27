@@ -17,6 +17,7 @@ export function FarcasterFollowing() {
   const [following, setFollowing] = useState<FollowingUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [hasFailed, setHasFailed] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [showLeftScroll, setShowLeftScroll] = useState(false);
   const [showRightScroll, setShowRightScroll] = useState(false);
@@ -38,9 +39,15 @@ export function FarcasterFollowing() {
       }
 
       setFollowing(data.users || []);
+      setHasFailed(false);
     } catch (err) {
       console.error('[FarcasterFollowing] Error fetching following:', err);
-      setError('Failed to load following list');
+      // Silently fail - don't show error to user as this is not a critical feature
+      // On initial load, hide the component entirely
+      if (loading) {
+        setHasFailed(true);
+      }
+      setFollowing([]);
     } finally {
       setLoading(false);
     }
@@ -84,6 +91,11 @@ export function FarcasterFollowing() {
       scrollContainerRef.current.scrollBy({ left: 300, behavior: 'smooth' });
     }
   };
+
+  // If component failed to load initially, don't render it at all
+  if (hasFailed) {
+    return null;
+  }
 
   if (loading) {
     return (

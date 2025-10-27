@@ -9,11 +9,13 @@ import Link from 'next/link';
 import { apiClient } from '@/lib/api-client';
 import { getTraitColor, type Trait } from '@/lib/constants/traits';
 import { LevelProgress } from '@/components/dashboard/LevelProgress';
-import { Achievements } from '@/components/dashboard/Achievements';
 import { FarcasterFollowing } from '@/components/dashboard/FarcasterFollowing';
 import { useAttestationStatus } from '@/lib/hooks/useAttestationStatus';
 import VerifiedInsights from '@/components/dashboard/VerifiedInsights';
 import GrowthDashboard from '@/components/dashboard/GrowthDashboard';
+import PointLeaderboard from '@/components/dashboard/PointLeaderboard';
+import InboxOverview from '@/components/dashboard/InboxOverview';
+import AchievementsSummary from '@/components/dashboard/AchievementsSummary';
 
 interface MatchStats {
   total: number;
@@ -165,8 +167,11 @@ export default function Dashboard() {
       <Navigation />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Profile Header */}
-        <div className="backdrop-blur-xl bg-gradient-to-br from-white/80 via-purple-50/60 to-blue-50/60 rounded-2xl border border-white/60 shadow-lg hover:shadow-2xl transition-all duration-300 p-8 mb-8">
+        {/* Profile Header and Leaderboard Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+          {/* Profile Header - Takes 2 columns on large screens */}
+          <div className="lg:col-span-2">
+            <div className="backdrop-blur-xl bg-gradient-to-br from-white/80 via-purple-50/60 to-blue-50/60 rounded-2xl border border-white/60 shadow-lg hover:shadow-2xl transition-all duration-300 p-8 h-full">
           <div className="flex items-start justify-between mb-4">
             <div className="flex items-start space-x-6 flex-1">
               {user.pfpUrl && (
@@ -319,114 +324,26 @@ export default function Dashboard() {
               </div>
             )}
           </div>
-        </div>
-
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {/* Total Matches */}
-          <div className="group backdrop-blur-xl bg-gradient-to-br from-purple-50/80 to-violet-50/80 rounded-2xl border border-purple-200/60 shadow-lg hover:shadow-2xl transition-all duration-300 p-6 hover:-translate-y-1">
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-sm font-semibold text-purple-700/80 uppercase tracking-wide">Total Matches</p>
-              <div className="w-12 h-12 bg-gradient-to-br from-purple-100 to-violet-100 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-sm">
-                <svg
-                  className="w-6 h-6 text-purple-600"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
-                  />
-                </svg>
-              </div>
             </div>
-            <p className="text-4xl font-bold bg-gradient-to-r from-purple-700 to-violet-700 bg-clip-text text-transparent">
-              {loadingStats ? '...' : stats.total}
-            </p>
           </div>
 
-          {/* Pending */}
-          <div className="group backdrop-blur-xl bg-gradient-to-br from-yellow-50/80 to-amber-50/80 rounded-2xl border border-yellow-200/60 shadow-lg hover:shadow-2xl transition-all duration-300 p-6 hover:-translate-y-1">
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-sm font-semibold text-yellow-700/80 uppercase tracking-wide">Pending</p>
-              <div className="w-12 h-12 bg-gradient-to-br from-yellow-100 to-amber-100 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-sm">
-                <svg
-                  className="w-6 h-6 text-yellow-600"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
-              </div>
-            </div>
-            <p className="text-4xl font-bold bg-gradient-to-r from-yellow-700 to-amber-700 bg-clip-text text-transparent">
-              {loadingStats ? '...' : stats.pending}
-            </p>
-          </div>
-
-          {/* Accepted */}
-          <div className="group backdrop-blur-xl bg-gradient-to-br from-emerald-50/80 to-green-50/80 rounded-2xl border border-emerald-200/60 shadow-lg hover:shadow-2xl transition-all duration-300 p-6 hover:-translate-y-1">
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-sm font-semibold text-emerald-700/80 uppercase tracking-wide">Accepted</p>
-              <div className="w-12 h-12 bg-gradient-to-br from-emerald-100 to-green-100 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-sm">
-                <svg
-                  className="w-6 h-6 text-emerald-600"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
-              </div>
-            </div>
-            <p className="text-4xl font-bold bg-gradient-to-r from-emerald-700 to-green-700 bg-clip-text text-transparent">
-              {loadingStats ? '...' : stats.accepted}
-            </p>
-          </div>
-
-          {/* Created */}
-          <div className="group backdrop-blur-xl bg-gradient-to-br from-blue-50/80 to-cyan-50/80 rounded-2xl border border-blue-200/60 shadow-lg hover:shadow-2xl transition-all duration-300 p-6 hover:-translate-y-1">
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-sm font-semibold text-blue-700/80 uppercase tracking-wide">Created</p>
-              <div className="w-12 h-12 bg-gradient-to-br from-blue-100 to-cyan-100 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-sm">
-                <svg
-                  className="w-6 h-6 text-blue-600"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-                  />
-                </svg>
-              </div>
-            </div>
-            <p className="text-4xl font-bold bg-gradient-to-r from-blue-700 to-cyan-700 bg-clip-text text-transparent">
-              {loadingStats ? '...' : stats.asCreator}
-            </p>
+          {/* Point Leaderboard - Takes 1 column on large screens */}
+          <div className="lg:col-span-1">
+            <PointLeaderboard />
           </div>
         </div>
 
-        {/* Achievements Section */}
-        <div className="mb-8">
-          <Achievements />
+        {/* Inbox Overview and Achievements Summary Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          {/* Inbox Overview - Left side */}
+          <div>
+            <InboxOverview stats={stats} loading={loadingStats} />
+          </div>
+
+          {/* Achievements Summary - Right side */}
+          <div>
+            <AchievementsSummary />
+          </div>
         </div>
 
         {/* Farcaster Following Section */}

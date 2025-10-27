@@ -78,10 +78,18 @@ export async function GET(request: NextRequest) {
         has_more: !!result.next_cursor,
       });
     }
-  } catch (error) {
-    console.error('Error fetching following:', error);
+  } catch (error: any) {
+    console.error('[API Following] Error fetching following:', error);
+    console.error('[API Following] Error details:', {
+      message: error?.message,
+      status: error?.status,
+      response: error?.response,
+    });
     return NextResponse.json(
-      { error: 'Failed to fetch following list' },
+      {
+        error: 'Failed to fetch following list',
+        details: error?.message || 'Unknown error',
+      },
       { status: 500 }
     );
   }

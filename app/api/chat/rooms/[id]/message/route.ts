@@ -9,7 +9,7 @@ import { sendMessage, markFirstJoin } from '@/lib/services/chat-service';
  */
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // Authenticate user
@@ -21,7 +21,7 @@ export async function POST(
       );
     }
 
-    const roomId = params.id;
+    const { id: roomId } = await params;
     const { body } = await request.json();
 
     // Validate message body

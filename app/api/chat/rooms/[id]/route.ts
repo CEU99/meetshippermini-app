@@ -9,7 +9,7 @@ import { getChatRoom, markFirstJoin } from '@/lib/services/chat-service';
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // Authenticate user
@@ -21,7 +21,7 @@ export async function GET(
       );
     }
 
-    const roomId = params.id;
+    const { id: roomId } = await params;
 
     // Get chat room with details
     const room = await getChatRoom(roomId);

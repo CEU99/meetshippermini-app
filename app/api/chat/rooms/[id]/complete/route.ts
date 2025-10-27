@@ -9,7 +9,7 @@ import { markParticipantCompleted } from '@/lib/services/chat-service';
  */
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // Authenticate user
@@ -21,7 +21,7 @@ export async function POST(
       );
     }
 
-    const roomId = params.id;
+    const { id: roomId } = await params;
 
     // Mark participant as completed
     const result = await markParticipantCompleted(roomId, session.fid);

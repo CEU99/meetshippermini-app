@@ -52,7 +52,7 @@ interface Match {
   updated_at: string;
 }
 
-type InboxTab = 'pending' | 'awaiting' | 'accepted' | 'declined' | 'completed' | 'suggestions';
+type InboxTab = 'pending' | 'awaiting' | 'accepted' | 'declined' | 'completed' | 'suggestions' | 'your-suggestions';
 
 interface Suggestion {
   id: string;
@@ -71,6 +71,29 @@ interface Suggestion {
   updatedAt: string;
 }
 
+interface UserSuggestion {
+  id: string;
+  userA: {
+    fid: number;
+    username: string;
+    displayName: string;
+    avatarUrl: string;
+  };
+  userB: {
+    fid: number;
+    username: string;
+    displayName: string;
+    avatarUrl: string;
+  };
+  message: string;
+  status: string;
+  aAccepted: boolean;
+  bAccepted: boolean;
+  chatRoomId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export default function Inbox() {
   const router = useRouter();
   const { user, isAuthenticated, loading: authLoading } = useFarcasterAuth();
@@ -82,6 +105,12 @@ export default function Inbox() {
   const [currentTime, setCurrentTime] = useState(Date.now());
   const [chatRoomMap, setChatRoomMap] = useState<Map<string, string>>(new Map()); // matchId -> roomId
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+  const [userSuggestions, setUserSuggestions] = useState<UserSuggestion[]>([]);
+  const [selectedUserSuggestion, setSelectedUserSuggestion] = useState<UserSuggestion | null>(null);
+  const [showSuggestionSidebar, setShowSuggestionSidebar] = useState(true);
+  const [showMatchSidebar, setShowMatchSidebar] = useState(true);
+  const [selectedSuggestion, setSelectedSuggestion] = useState<Suggestion | null>(null);
+  const [showIncomingSuggestionSidebar, setShowIncomingSuggestionSidebar] = useState(true);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -93,6 +122,8 @@ export default function Inbox() {
     if (isAuthenticated) {
       if (activeTab === 'suggestions') {
         fetchSuggestions();
+      } else if (activeTab === 'your-suggestions') {
+        fetchUserSuggestions();
       } else {
         fetchMatches();
       }
@@ -165,9 +196,33 @@ export default function Inbox() {
       );
       if (data.success && data.suggestions) {
         setSuggestions(data.suggestions);
+        // Auto-select first suggestion if none selected
+        if (data.suggestions.length > 0 && !selectedSuggestion) {
+          setSelectedSuggestion(data.suggestions[0]);
+        }
       }
     } catch (error) {
       console.error('Error fetching suggestions:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchUserSuggestions = async () => {
+    setLoading(true);
+    try {
+      const data = await apiClient.get<{ success: boolean; data: UserSuggestion[]; total: number }>(
+        '/api/matches/my-suggestions'
+      );
+      if (data.success && data.data) {
+        setUserSuggestions(data.data);
+        // Auto-select first suggestion if none selected
+        if (data.data.length > 0 && !selectedUserSuggestion) {
+          setSelectedUserSuggestion(data.data[0]);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching your suggestions:', error);
     } finally {
       setLoading(false);
     }
@@ -383,17 +438,38 @@ export default function Inbox() {
   const getStatusBadgeColor = (status: string): string => {
     switch (status) {
       case 'accepted':
-        return 'bg-green-100 text-green-800 border-green-200';
+        return 'bg-gradient-to-r from-green-50/90 to-emerald-50/90 text-green-800 border-green-200';
       case 'proposed':
       case 'pending':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+        return 'bg-gradient-to-r from-yellow-50/90 to-amber-50/90 text-yellow-800 border-yellow-200';
       case 'accepted_by_a':
       case 'accepted_by_b':
-        return 'bg-blue-100 text-blue-800 border-blue-200';
+        return 'bg-gradient-to-r from-blue-50/90 to-cyan-50/90 text-blue-800 border-blue-200';
       case 'declined':
-        return 'bg-red-100 text-red-800 border-red-200';
+        return 'bg-gradient-to-r from-red-50/90 to-rose-50/90 text-red-800 border-red-200';
+      case 'completed':
+        return 'bg-gradient-to-r from-purple-50/90 to-violet-50/90 text-purple-800 border-purple-200';
       default:
-        return 'bg-gray-100 text-gray-800 border-gray-200';
+        return 'bg-gradient-to-r from-gray-50/90 to-slate-50/90 text-gray-800 border-gray-200';
+    }
+  };
+
+  const getStatusEmoji = (status: string): string => {
+    switch (status) {
+      case 'accepted':
+        return '✅';
+      case 'proposed':
+      case 'pending':
+        return '⏳';
+      case 'accepted_by_a':
+      case 'accepted_by_b':
+        return '💬';
+      case 'declined':
+        return '❌';
+      case 'completed':
+        return '🟣';
+      default:
+        return '○';
     }
   };
 
@@ -404,6 +480,19 @@ export default function Inbox() {
       return myAccepted ? 'Awaiting other party' : 'Needs your response';
     }
     return match.status.replace(/_/g, ' ');
+  };
+
+  const getUserSuggestionStatus = (suggestion: UserSuggestion): { label: string; emoji: string; color: string } => {
+    if (suggestion.status === 'accepted' && suggestion.aAccepted && suggestion.bAccepted) {
+      return { label: 'Accepted', emoji: '✅', color: 'bg-green-100 text-green-800 border-green-200' };
+    }
+    if (suggestion.status === 'declined') {
+      return { label: 'Declined', emoji: '❌', color: 'bg-red-100 text-red-800 border-red-200' };
+    }
+    if (suggestion.status === 'accepted_by_a' || suggestion.status === 'accepted_by_b' || suggestion.aAccepted || suggestion.bAccepted) {
+      return { label: 'Pending', emoji: '⏳', color: 'bg-yellow-100 text-yellow-800 border-yellow-200' };
+    }
+    return { label: 'Pending', emoji: '⏳', color: 'bg-yellow-100 text-yellow-800 border-yellow-200' };
   };
 
   const getPendingMatches = () => matches.filter(needsMyAction);
@@ -479,83 +568,119 @@ export default function Inbox() {
         </div>
 
         {/* Tabs */}
-        <div className="bg-white rounded-lg shadow-md mb-6">
-          <div className="border-b border-gray-200">
-            <nav className="flex -mb-px">
+        <div className="backdrop-blur-xl bg-gradient-to-br from-white/80 via-purple-50/60 to-blue-50/60 rounded-2xl border border-white/60 shadow-lg mb-6">
+          <div className="border-b border-purple-100">
+            <nav className="flex -mb-px overflow-x-auto">
               <button
                 onClick={() => setActiveTab('pending')}
-                className={`py-4 px-6 text-sm font-medium border-b-2 ${
+                className={`py-4 px-6 text-sm font-medium border-b-2 transition-all duration-200 whitespace-nowrap ${
                   activeTab === 'pending'
-                    ? 'border-purple-500 text-purple-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    ? 'border-purple-500 text-purple-700 bg-gradient-to-b from-purple-50/50 to-transparent'
+                    : 'border-transparent text-gray-600 hover:text-purple-600 hover:border-purple-200'
                 }`}
               >
-                Pending
-                {pendingCount > 0 && (
-                  <span className="ml-2 px-2 py-1 rounded-full bg-red-100 text-red-600 text-xs font-bold">
-                    {pendingCount}
-                  </span>
-                )}
+                <span className="flex items-center gap-2">
+                  <span>🕓</span>
+                  <span>Pending</span>
+                  {pendingCount > 0 && (
+                    <span className="px-2 py-0.5 rounded-full bg-red-100 text-red-600 text-xs font-bold">
+                      {pendingCount}
+                    </span>
+                  )}
+                </span>
               </button>
               <button
                 onClick={() => setActiveTab('awaiting')}
-                className={`py-4 px-6 text-sm font-medium border-b-2 ${
+                className={`py-4 px-6 text-sm font-medium border-b-2 transition-all duration-200 whitespace-nowrap ${
                   activeTab === 'awaiting'
-                    ? 'border-purple-500 text-purple-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    ? 'border-purple-500 text-purple-700 bg-gradient-to-b from-purple-50/50 to-transparent'
+                    : 'border-transparent text-gray-600 hover:text-purple-600 hover:border-purple-200'
                 }`}
               >
-                Awaiting Other Party
-                {awaitingCount > 0 && (
-                  <span className="ml-2 px-2 py-1 rounded-full bg-blue-100 text-blue-600 text-xs font-bold">
-                    {awaitingCount}
-                  </span>
-                )}
+                <span className="flex items-center gap-2">
+                  <span>💬</span>
+                  <span>Awaiting</span>
+                  {awaitingCount > 0 && (
+                    <span className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-600 text-xs font-bold">
+                      {awaitingCount}
+                    </span>
+                  )}
+                </span>
               </button>
               <button
                 onClick={() => setActiveTab('accepted')}
-                className={`py-4 px-6 text-sm font-medium border-b-2 ${
+                className={`py-4 px-6 text-sm font-medium border-b-2 transition-all duration-200 whitespace-nowrap ${
                   activeTab === 'accepted'
-                    ? 'border-purple-500 text-purple-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    ? 'border-purple-500 text-purple-700 bg-gradient-to-b from-purple-50/50 to-transparent'
+                    : 'border-transparent text-gray-600 hover:text-purple-600 hover:border-purple-200'
                 }`}
               >
-                Accepted
+                <span className="flex items-center gap-2">
+                  <span>✅</span>
+                  <span>Accepted</span>
+                </span>
               </button>
               <button
                 onClick={() => setActiveTab('declined')}
-                className={`py-4 px-6 text-sm font-medium border-b-2 ${
+                className={`py-4 px-6 text-sm font-medium border-b-2 transition-all duration-200 whitespace-nowrap ${
                   activeTab === 'declined'
-                    ? 'border-purple-500 text-purple-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    ? 'border-purple-500 text-purple-700 bg-gradient-to-b from-purple-50/50 to-transparent'
+                    : 'border-transparent text-gray-600 hover:text-purple-600 hover:border-purple-200'
                 }`}
               >
-                Declined
+                <span className="flex items-center gap-2">
+                  <span>❌</span>
+                  <span>Declined</span>
+                </span>
               </button>
               <button
                 onClick={() => setActiveTab('completed')}
-                className={`py-4 px-6 text-sm font-medium border-b-2 ${
+                className={`py-4 px-6 text-sm font-medium border-b-2 transition-all duration-200 whitespace-nowrap ${
                   activeTab === 'completed'
-                    ? 'border-purple-500 text-purple-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    ? 'border-purple-500 text-purple-700 bg-gradient-to-b from-purple-50/50 to-transparent'
+                    : 'border-transparent text-gray-600 hover:text-purple-600 hover:border-purple-200'
                 }`}
               >
-                Completed
+                <span className="flex items-center gap-2">
+                  <span>🟣</span>
+                  <span>Completed</span>
+                </span>
               </button>
               <button
                 onClick={() => setActiveTab('suggestions')}
-                className={`py-4 px-6 text-sm font-medium border-b-2 ${
+                className={`py-4 px-6 text-sm font-medium border-b-2 transition-all duration-200 whitespace-nowrap ${
                   activeTab === 'suggestions'
-                    ? 'border-purple-500 text-purple-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    ? 'border-purple-500 text-purple-700 bg-gradient-to-b from-purple-50/50 to-transparent'
+                    : 'border-transparent text-gray-600 hover:text-purple-600 hover:border-purple-200'
                 }`}
               >
-                Suggestions
-                {suggestions.length > 0 && (
-                  <span className="ml-2 px-2 py-1 rounded-full bg-green-100 text-green-600 text-xs font-bold">
-                    {suggestions.length}
-                  </span>
-                )}
+                <span className="flex items-center gap-2">
+                  <span>💡</span>
+                  <span>Suggestions</span>
+                  {suggestions.length > 0 && (
+                    <span className="px-2 py-0.5 rounded-full bg-green-100 text-green-600 text-xs font-bold">
+                      {suggestions.length}
+                    </span>
+                  )}
+                </span>
+              </button>
+              <button
+                onClick={() => setActiveTab('your-suggestions')}
+                className={`py-4 px-6 text-sm font-medium border-b-2 transition-all duration-200 whitespace-nowrap ${
+                  activeTab === 'your-suggestions'
+                    ? 'border-purple-500 text-purple-700 bg-gradient-to-b from-purple-50/50 to-transparent'
+                    : 'border-transparent text-gray-600 hover:text-purple-600 hover:border-purple-200'
+                }`}
+              >
+                <span className="flex items-center gap-2">
+                  <span>🎯</span>
+                  <span>Your Suggestions</span>
+                  {userSuggestions.length > 0 && (
+                    <span className="px-2 py-0.5 rounded-full bg-purple-100 text-purple-600 text-xs font-bold">
+                      {userSuggestions.length}
+                    </span>
+                  )}
+                </span>
               </button>
             </nav>
           </div>
@@ -566,183 +691,496 @@ export default function Inbox() {
           <div className="flex items-center justify-center py-12">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
           </div>
-        ) : activeTab === 'suggestions' ? (
-          // Suggestions Tab Content
-          suggestions.length === 0 ? (
-            <div className="bg-white rounded-lg shadow-md p-8 text-center">
-              <p className="text-gray-600">No match suggestions yet</p>
+        ) : activeTab === 'your-suggestions' ? (
+          // Your Suggestions Tab Content - Master-Detail Layout
+          <div className="space-y-6">
+            {/* Header */}
+            <div className="backdrop-blur-xl bg-gradient-to-r from-purple-50/80 to-indigo-50/80 border border-purple-200/60 rounded-2xl p-6 shadow-lg">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-lg font-bold text-purple-800 mb-2 flex items-center gap-2">
+                    <span>💡</span> Your Suggested Matches
+                  </h2>
+                  <p className="text-sm text-purple-700">
+                    Track how your introductions are progressing! See the status of matches you've suggested between other users.
+                  </p>
+                </div>
+                {/* Mobile sidebar toggle */}
+                <button
+                  onClick={() => setShowSuggestionSidebar(!showSuggestionSidebar)}
+                  className="lg:hidden px-3 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-all duration-200"
+                >
+                  {showSuggestionSidebar ? '✕' : '☰'}
+                </button>
+              </div>
             </div>
-          ) : (
-            <div className="space-y-4">
-              {suggestions.map((suggestion) => (
-                <div key={suggestion.id} className="bg-white rounded-lg shadow-md p-6">
-                  <div className="flex items-start space-x-4">
-                    <Image
-                      src={suggestion.otherUser.avatarUrl || '/default-avatar.png'}
-                      alt={suggestion.otherUser.displayName}
-                      width={64}
-                      height={64}
-                      className="rounded-full"
-                    />
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-gray-900 text-lg mb-1">
-                        Match suggestion with {suggestion.otherUser.displayName}
-                      </h3>
-                      <p className="text-sm text-gray-600 mb-1">
-                        @{suggestion.otherUser.username}
+
+            {userSuggestions.length === 0 ? (
+              <div className="backdrop-blur-xl bg-gradient-to-br from-white/80 via-purple-50/60 to-blue-50/60 rounded-2xl border border-white/60 shadow-lg p-8 text-center">
+                <p className="text-gray-600">You haven't suggested any matches yet</p>
+                <button
+                  onClick={() => router.push('/mini/suggest')}
+                  className="mt-4 px-6 py-2.5 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-xl hover:from-purple-600 hover:to-purple-700 font-medium transition-all duration-200"
+                >
+                  Suggest a Match
+                </button>
+              </div>
+            ) : (
+              <div className="flex flex-col lg:flex-row gap-6 items-start">
+                {/* Left Panel - Suggestion List */}
+                <div className={`${showSuggestionSidebar ? 'block' : 'hidden lg:block'} w-full lg:w-80 flex-shrink-0`}>
+                  <div className="backdrop-blur-lg bg-white/50 rounded-2xl border border-purple-200/40 shadow-lg overflow-hidden">
+                    <div className="p-4 border-b border-purple-100">
+                      <p className="text-sm font-semibold text-purple-800">
+                        {userSuggestions.length} Suggestion{userSuggestions.length !== 1 ? 's' : ''}
                       </p>
-                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-3 mb-4">
-                        <p className="text-sm text-blue-900">{suggestion.message}</p>
+                    </div>
+                    <div className="overflow-y-auto max-h-[600px]">
+                      {userSuggestions.map((suggestion) => {
+                        const statusInfo = getUserSuggestionStatus(suggestion);
+                        const isSelected = selectedUserSuggestion?.id === suggestion.id;
+
+                        return (
+                          <button
+                            key={suggestion.id}
+                            onClick={() => setSelectedUserSuggestion(suggestion)}
+                            className={`w-full p-4 border-b border-purple-100/40 hover:bg-purple-50/40 transition-all duration-200 text-left ${
+                              isSelected ? 'bg-purple-50/60 border-l-4 border-l-purple-400 shadow-md' : ''
+                            }`}
+                          >
+                            {/* Avatars side by side */}
+                            <div className="flex items-center gap-2 mb-3">
+                              <Image
+                                src={suggestion.userA.avatarUrl || '/default-avatar.png'}
+                                alt={suggestion.userA.displayName}
+                                width={32}
+                                height={32}
+                                className="rounded-full border border-purple-200 shadow-sm"
+                              />
+                              <span className="text-purple-500 text-sm">↔</span>
+                              <Image
+                                src={suggestion.userB.avatarUrl || '/default-avatar.png'}
+                                alt={suggestion.userB.displayName}
+                                width={32}
+                                height={32}
+                                className="rounded-full border border-purple-200 shadow-sm"
+                              />
+                            </div>
+
+                            {/* Usernames */}
+                            <div className="flex items-center justify-between gap-2 mb-2">
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs text-gray-700 truncate">{suggestion.userA.displayName} & {suggestion.userB.displayName}</p>
+                                <p className="text-[10px] text-gray-500 truncate">@{suggestion.userA.username} ↔ @{suggestion.userB.username}</p>
+                              </div>
+                            </div>
+
+                            {/* Status badge */}
+                            <div className="flex items-center justify-between">
+                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border ${statusInfo.color}`}>
+                                <span>{statusInfo.emoji}</span>
+                                <span>{statusInfo.label}</span>
+                              </span>
+                              <span className="text-[10px] text-gray-500">
+                                {new Date(suggestion.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                              </span>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right Panel - Detailed View */}
+                <div className="flex-1 w-full min-w-0">
+                  {!selectedUserSuggestion ? (
+                    <div className="backdrop-blur-xl bg-gradient-to-br from-white/80 via-purple-50/60 to-blue-50/60 rounded-2xl border border-white/60 shadow-lg p-12 text-center">
+                      <p className="text-gray-600">Select a suggestion to view details</p>
+                    </div>
+                  ) : (
+                    <div className="backdrop-blur-xl bg-gradient-to-br from-white/80 via-purple-50/60 to-blue-50/60 rounded-2xl border border-white/60 shadow-lg hover:shadow-2xl transition-all duration-300 p-6">
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex items-center gap-4">
+                          {/* User A */}
+                          <div className="flex items-center gap-3">
+                            <Image
+                              src={selectedUserSuggestion.userA.avatarUrl || '/default-avatar.png'}
+                              alt={selectedUserSuggestion.userA.displayName}
+                              width={48}
+                              height={48}
+                              className="rounded-full border-2 border-purple-200"
+                            />
+                            <div>
+                              <p className="font-semibold text-gray-900">{selectedUserSuggestion.userA.displayName}</p>
+                              <p className="text-sm text-gray-600">@{selectedUserSuggestion.userA.username}</p>
+                            </div>
+                          </div>
+
+                          {/* Arrow */}
+                          <div className="text-2xl text-purple-500">↔</div>
+
+                          {/* User B */}
+                          <div className="flex items-center gap-3">
+                            <Image
+                              src={selectedUserSuggestion.userB.avatarUrl || '/default-avatar.png'}
+                              alt={selectedUserSuggestion.userB.displayName}
+                              width={48}
+                              height={48}
+                              className="rounded-full border-2 border-purple-200"
+                            />
+                            <div>
+                              <p className="font-semibold text-gray-900">{selectedUserSuggestion.userB.displayName}</p>
+                              <p className="text-sm text-gray-600">@{selectedUserSuggestion.userB.username}</p>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Status Badge */}
+                        <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium border ${getUserSuggestionStatus(selectedUserSuggestion).color}`}>
+                          <span>{getUserSuggestionStatus(selectedUserSuggestion).emoji}</span>
+                          <span>{getUserSuggestionStatus(selectedUserSuggestion).label}</span>
+                        </span>
                       </div>
 
-                      {suggestion.status === 'proposed' && !suggestion.myAcceptance && (
-                        <div className="flex space-x-3">
+                      {/* Message */}
+                      <div className="backdrop-blur-xl bg-gradient-to-r from-blue-50/80 to-indigo-50/80 border border-blue-200/60 rounded-xl p-4 mb-3">
+                        <p className="text-sm font-medium text-blue-900 mb-1">Your introduction message:</p>
+                        <p className="text-sm text-blue-800">&quot;{selectedUserSuggestion.message}&quot;</p>
+                      </div>
+
+                      {/* Status Details */}
+                      <div className="grid grid-cols-2 gap-3 mb-3">
+                        <div className={`rounded-lg p-3 border ${selectedUserSuggestion.aAccepted ? 'bg-green-50/80 border-green-200' : 'bg-gray-50/80 border-gray-200'}`}>
+                          <p className="text-xs font-semibold text-gray-700 mb-1">{selectedUserSuggestion.userA.displayName}</p>
+                          <p className={`text-sm font-medium ${selectedUserSuggestion.aAccepted ? 'text-green-700' : 'text-gray-600'}`}>
+                            {selectedUserSuggestion.aAccepted ? '✅ Accepted' : '⏳ Pending'}
+                          </p>
+                        </div>
+                        <div className={`rounded-lg p-3 border ${selectedUserSuggestion.bAccepted ? 'bg-green-50/80 border-green-200' : 'bg-gray-50/80 border-gray-200'}`}>
+                          <p className="text-xs font-semibold text-gray-700 mb-1">{selectedUserSuggestion.userB.displayName}</p>
+                          <p className={`text-sm font-medium ${selectedUserSuggestion.bAccepted ? 'text-green-700' : 'text-gray-600'}`}>
+                            {selectedUserSuggestion.bAccepted ? '✅ Accepted' : '⏳ Pending'}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Timestamp */}
+                      <div className="flex items-center justify-between text-xs text-gray-500">
+                        <span>Suggested: {new Date(selectedUserSuggestion.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} at {new Date(selectedUserSuggestion.createdAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</span>
+                        {selectedUserSuggestion.status === 'accepted' && (
+                          <span className="text-green-600 font-medium">🎉 Both users connected!</span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        ) : activeTab === 'suggestions' ? (
+          // Suggestions Tab Content - Master-Detail Layout
+          <div className="space-y-6">
+            {/* Header */}
+            <div className="backdrop-blur-xl bg-gradient-to-r from-blue-50/80 to-indigo-50/80 border border-blue-200/60 rounded-2xl p-6 shadow-lg">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-lg font-bold text-blue-800 mb-2 flex items-center gap-2">
+                    <span>💡</span> Match Suggestions For You
+                  </h2>
+                  <p className="text-sm text-blue-700">
+                    Others think you'd connect well with these people. Review each suggestion and decide if you'd like to meet!
+                  </p>
+                </div>
+                {/* Mobile sidebar toggle */}
+                <button
+                  onClick={() => setShowIncomingSuggestionSidebar(!showIncomingSuggestionSidebar)}
+                  className="lg:hidden px-3 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-all duration-200"
+                >
+                  {showIncomingSuggestionSidebar ? '✕' : '☰'}
+                </button>
+              </div>
+            </div>
+
+            {suggestions.length === 0 ? (
+              <div className="backdrop-blur-xl bg-gradient-to-br from-white/80 via-purple-50/60 to-blue-50/60 rounded-2xl border border-white/60 shadow-lg p-8 text-center">
+                <p className="text-gray-600">💡 No match suggestions yet</p>
+              </div>
+            ) : (
+              <div className="flex flex-col lg:flex-row gap-6 items-start">
+                {/* Left Panel - Suggestion List */}
+                <div className={`${showIncomingSuggestionSidebar ? 'block' : 'hidden lg:block'} w-full lg:w-80 flex-shrink-0`}>
+                  <div className="backdrop-blur-lg bg-white/50 rounded-2xl border border-blue-200/40 shadow-lg overflow-hidden">
+                    <div className="p-4 border-b border-blue-100">
+                      <p className="text-sm font-semibold text-blue-800">
+                        {suggestions.length} Suggestion{suggestions.length !== 1 ? 's' : ''}
+                      </p>
+                    </div>
+                    <div className="overflow-y-auto max-h-[600px]">
+                      {suggestions.map((suggestion) => {
+                        const isSelected = selectedSuggestion?.id === suggestion.id;
+                        const statusColor = suggestion.myAcceptance && suggestion.otherAcceptance
+                          ? 'text-green-600'
+                          : suggestion.myAcceptance
+                          ? 'text-yellow-600'
+                          : 'text-blue-600';
+
+                        return (
                           <button
-                            onClick={() => handleAcceptSuggestion(suggestion.id)}
-                            disabled={actionLoading}
-                            className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-gray-300 font-medium"
+                            key={suggestion.id}
+                            onClick={() => setSelectedSuggestion(suggestion)}
+                            className={`w-full p-4 border-b border-blue-100/40 hover:bg-blue-50/40 transition-all duration-200 text-left ${
+                              isSelected ? 'bg-blue-50/60 border-l-4 border-l-blue-400 shadow-md' : ''
+                            }`}
                           >
-                            {actionLoading ? 'Processing...' : 'Accept'}
+                            {/* Avatar */}
+                            <div className="flex items-center gap-3 mb-2">
+                              <Image
+                                src={suggestion.otherUser.avatarUrl || '/default-avatar.png'}
+                                alt={suggestion.otherUser.displayName}
+                                width={40}
+                                height={40}
+                                className="rounded-full border border-blue-200 shadow-sm"
+                              />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-semibold text-gray-900 truncate">
+                                  {suggestion.otherUser.displayName}
+                                </p>
+                                <p className="text-xs text-gray-600 truncate">
+                                  @{suggestion.otherUser.username}
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* Status */}
+                            <div className="flex items-center justify-between">
+                              <span className={`text-[10px] font-medium ${statusColor}`}>
+                                {suggestion.myAcceptance && suggestion.otherAcceptance
+                                  ? '✅ Both Accepted'
+                                  : suggestion.myAcceptance
+                                  ? '⏳ Awaiting Response'
+                                  : '💡 New Suggestion'}
+                              </span>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right Panel - Detailed View */}
+                <div className="flex-1 w-full min-w-0">
+                  {!selectedSuggestion ? (
+                    <div className="backdrop-blur-xl bg-gradient-to-br from-white/80 via-purple-50/60 to-blue-50/60 rounded-2xl border border-white/60 shadow-lg p-12 text-center">
+                      <p className="text-gray-600">Select a suggestion to view details</p>
+                    </div>
+                  ) : (
+                    <div className="backdrop-blur-xl bg-gradient-to-br from-white/80 via-purple-50/60 to-blue-50/60 rounded-2xl border border-white/60 shadow-lg hover:shadow-2xl transition-all duration-300 p-6">
+                      <div className="flex items-start space-x-4 mb-4">
+                        <Image
+                          src={selectedSuggestion.otherUser.avatarUrl || '/default-avatar.png'}
+                          alt={selectedSuggestion.otherUser.displayName}
+                          width={64}
+                          height={64}
+                          className="rounded-full border-2 border-purple-200 shadow-md"
+                        />
+                        <div className="flex-1">
+                          <h3 className="font-bold text-gray-900 text-xl mb-1 flex items-center gap-2">
+                            <span>🤝</span>
+                            <span>Match suggestion with {selectedSuggestion.otherUser.displayName}</span>
+                          </h3>
+                          <p className="text-sm text-gray-600">
+                            @{selectedSuggestion.otherUser.username}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="backdrop-blur-xl bg-gradient-to-r from-blue-50/80 to-indigo-50/80 border border-blue-200/60 rounded-xl p-4 mb-4">
+                        <p className="text-sm font-medium text-blue-900 mb-1">Why this match?</p>
+                        <p className="text-sm text-blue-800 italic">&quot;{selectedSuggestion.message}&quot;</p>
+                      </div>
+
+                      {selectedSuggestion.status === 'proposed' && !selectedSuggestion.myAcceptance && (
+                        <div className="flex gap-3 mb-4">
+                          <button
+                            onClick={() => handleAcceptSuggestion(selectedSuggestion.id)}
+                            disabled={actionLoading}
+                            className="flex-1 bg-gradient-to-r from-green-500 to-emerald-500 text-white px-5 py-3 rounded-xl hover:from-green-600 hover:to-emerald-600 disabled:from-gray-300 disabled:to-gray-400 font-semibold shadow-md hover:shadow-lg transition-all duration-200 disabled:cursor-not-allowed"
+                          >
+                            {actionLoading ? '⏳ Processing...' : '✅ Accept'}
                           </button>
                           <button
-                            onClick={() => handleDeclineSuggestion(suggestion.id)}
+                            onClick={() => handleDeclineSuggestion(selectedSuggestion.id)}
                             disabled={actionLoading}
-                            className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:bg-gray-300 font-medium"
+                            className="flex-1 bg-gradient-to-r from-red-500 to-rose-500 text-white px-5 py-3 rounded-xl hover:from-red-600 hover:to-rose-600 disabled:from-gray-300 disabled:to-gray-400 font-semibold shadow-md hover:shadow-lg transition-all duration-200 disabled:cursor-not-allowed"
                           >
-                            Decline
+                            {actionLoading ? '⏳ Processing...' : '❌ Decline'}
                           </button>
                         </div>
                       )}
 
-                      {suggestion.myAcceptance && !suggestion.otherAcceptance && (
-                        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-                          <p className="text-sm text-yellow-800">
-                            ✓ You accepted. Waiting for {suggestion.otherUser.displayName}...
+                      {selectedSuggestion.myAcceptance && !selectedSuggestion.otherAcceptance && (
+                        <div className="backdrop-blur-xl bg-gradient-to-r from-yellow-50/80 to-amber-50/80 border border-yellow-200/60 rounded-xl p-4 mb-4">
+                          <p className="text-sm text-yellow-900 flex items-center gap-2">
+                            <span>⏳</span>
+                            <span><strong>You accepted.</strong> Waiting for {selectedSuggestion.otherUser.displayName}...</span>
                           </p>
                         </div>
                       )}
 
-                      {suggestion.myAcceptance && suggestion.otherAcceptance && suggestion.chatRoomId && (
+                      {selectedSuggestion.myAcceptance && selectedSuggestion.otherAcceptance && selectedSuggestion.chatRoomId && (
                         <button
-                          onClick={() => router.push(`/mini/chat/${suggestion.chatRoomId}`)}
-                          className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 font-medium"
+                          onClick={() => router.push(`/mini/chat/${selectedSuggestion.chatRoomId}`)}
+                          className="w-full px-6 py-3 bg-gradient-to-r from-purple-500 to-indigo-500 text-white rounded-xl hover:from-purple-600 hover:to-indigo-600 font-semibold shadow-md hover:shadow-lg transition-all duration-200"
                         >
-                          Open Chat Room
+                          💬 Open Chat Room
                         </button>
                       )}
                     </div>
-                  </div>
+                  )}
                 </div>
-              ))}
-            </div>
-          )
+              </div>
+            )}
+          </div>
         ) : matches.length === 0 ? (
-          <div className="bg-white rounded-lg shadow-md p-8 text-center">
+          <div className="backdrop-blur-xl bg-gradient-to-br from-white/80 via-purple-50/60 to-blue-50/60 rounded-2xl border border-white/60 shadow-lg p-8 text-center">
             <p className="text-gray-600 mb-4">
-              {activeTab === 'pending' && 'No pending matches'}
-              {activeTab === 'awaiting' && 'No matches awaiting response'}
-              {activeTab === 'accepted' && 'No accepted matches yet'}
-              {activeTab === 'declined' && 'No declined matches'}
-              {activeTab === 'completed' && 'No completed meetings yet'}
+              {activeTab === 'pending' && '🕓 No pending matches'}
+              {activeTab === 'awaiting' && '💬 No matches awaiting response'}
+              {activeTab === 'accepted' && '✅ No accepted matches yet'}
+              {activeTab === 'declined' && '❌ No declined matches'}
+              {activeTab === 'completed' && '🟣 No completed meetings yet'}
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Matches List */}
-            <div className="lg:col-span-1 space-y-4">
-              {matches.map((match) => {
-                const displayInfo = getMatchDisplayInfo(match);
-                if (!displayInfo) return null;
+          <div className="flex flex-col lg:flex-row gap-6 items-start">
+            {/* Mobile toggle button */}
+            <button
+              onClick={() => setShowMatchSidebar(!showMatchSidebar)}
+              className="lg:hidden w-full px-4 py-3 bg-gradient-to-r from-purple-500 to-indigo-500 text-white rounded-xl hover:from-purple-600 hover:to-indigo-600 font-medium transition-all duration-200 flex items-center justify-center gap-2"
+            >
+              <span>{showMatchSidebar ? '✕ Hide' : '☰ Show'} Match List</span>
+            </button>
 
-                return (
-                  <button
-                    key={match.id}
-                    onClick={() => setSelectedMatch(match)}
-                    className={`w-full p-4 bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow text-left ${
-                      selectedMatch?.id === match.id ? 'ring-2 ring-purple-500' : ''
-                    }`}
-                  >
-                    <div className="flex items-start space-x-3">
-                      <Image
-                        src={displayInfo.avatar}
-                        alt={displayInfo.title}
-                        width={48}
-                        height={48}
-                        className="rounded-full"
-                      />
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-gray-900 truncate">
-                          {displayInfo.title}
-                        </p>
-                        <p className="text-sm text-gray-600 truncate">
-                          {displayInfo.subtitle}
-                        </p>
-                        <div className="mt-2">
-                          <span className={`inline-block px-2 py-1 rounded text-xs font-medium border ${getStatusBadgeColor(match.status)}`}>
-                            {getStatusLabel(match)}
-                          </span>
-                        </div>
-                        {!isTerminalStatus(match.status) && needsMyAction(match) && (
-                          <div className="mt-2">
-                            <span className="inline-block px-2 py-1 rounded text-xs font-bold bg-red-100 text-red-700 border border-red-200">
-                              Action needed
-                            </span>
+            {/* Left Panel - Match List */}
+            <div className={`${showMatchSidebar ? 'block' : 'hidden lg:block'} w-full lg:w-80 flex-shrink-0`}>
+              <div className="backdrop-blur-lg bg-white/50 rounded-2xl border border-purple-200/40 shadow-lg overflow-hidden">
+                <div className="p-4 border-b border-purple-100">
+                  <p className="text-sm font-semibold text-purple-800">
+                    {matches.length} Match{matches.length !== 1 ? 'es' : ''}
+                  </p>
+                </div>
+                <div className="overflow-y-auto max-h-[600px]">
+                  {matches.map((match) => {
+                    const displayInfo = getMatchDisplayInfo(match);
+                    if (!displayInfo) return null;
+                    const isSelected = selectedMatch?.id === match.id;
+
+                    return (
+                      <button
+                        key={match.id}
+                        onClick={() => {
+                          setSelectedMatch(match);
+                          // Auto-hide sidebar on mobile after selection
+                          if (window.innerWidth < 1024) {
+                            setShowMatchSidebar(false);
+                          }
+                        }}
+                        className={`w-full p-4 border-b border-purple-100/40 hover:bg-purple-50/40 transition-all duration-200 text-left ${
+                          isSelected ? 'bg-purple-50/60 border-l-4 border-l-purple-400 shadow-md' : ''
+                        }`}
+                      >
+                        {/* Avatar and name */}
+                        <div className="flex items-center gap-3 mb-2">
+                          <Image
+                            src={displayInfo.avatar}
+                            alt={displayInfo.title}
+                            width={40}
+                            height={40}
+                            className="rounded-full border border-purple-200 shadow-sm"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-gray-900 truncate">
+                              {displayInfo.title}
+                            </p>
+                            <p className="text-xs text-gray-600 truncate">
+                              {displayInfo.subtitle}
+                            </p>
                           </div>
-                        )}
-                      </div>
-                    </div>
-                  </button>
-                );
-              })}
+                        </div>
+
+                        {/* Status badges */}
+                        <div className="flex flex-wrap gap-2 items-center">
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border ${getStatusBadgeColor(match.status)}`}>
+                            <span>{getStatusEmoji(match.status)}</span>
+                            <span>{getStatusLabel(match)}</span>
+                          </span>
+                          {!isTerminalStatus(match.status) && needsMyAction(match) && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-gradient-to-r from-red-50/90 to-rose-50/90 text-red-700 border border-red-200">
+                              <span>⚠️</span>
+                            </span>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
 
-            {/* Match Details */}
-            <div className="lg:col-span-2 bg-white rounded-lg shadow-md p-6">
+            {/* Right Panel - Match Details */}
+            <div className="flex-1 w-full min-w-0">
+              <div className="backdrop-blur-xl bg-gradient-to-br from-white/80 via-purple-50/60 to-blue-50/60 rounded-2xl border border-white/60 shadow-lg p-8">
               {!selectedMatch ? (
                 <div className="flex items-center justify-center h-64">
-                  <p className="text-gray-600">Select a match to view details</p>
+                  <p className="text-gray-600 text-lg">✨ Select a match to view details</p>
                 </div>
               ) : (
                 <>
                   {/* Header */}
-                  <div className="border-b border-gray-200 pb-4 mb-4">
+                  <div className="border-b border-purple-100 pb-5 mb-6">
                     <div className="flex items-start justify-between">
-                      <div className="flex items-center space-x-3">
+                      <div className="flex items-center space-x-4">
                         <Image
                           src={getMatchDisplayInfo(selectedMatch)?.avatar || ''}
                           alt={getMatchDisplayInfo(selectedMatch)?.title || ''}
-                          width={64}
-                          height={64}
-                          className="rounded-full"
+                          width={72}
+                          height={72}
+                          className="rounded-full border-3 border-purple-200 shadow-lg"
                         />
                         <div>
-                          <h3 className="text-xl font-bold text-gray-900">
+                          <h3 className="text-2xl font-bold text-gray-900 mb-1">
                             {getMatchDisplayInfo(selectedMatch)?.title}
                           </h3>
-                          <p className="text-sm text-gray-600">
+                          <p className="text-base text-gray-600">
                             {getMatchDisplayInfo(selectedMatch)?.subtitle}
                           </p>
                         </div>
                       </div>
-                      <span className={`px-3 py-1 rounded-full text-sm font-medium border ${getStatusBadgeColor(selectedMatch.status)}`}>
-                        {getStatusLabel(selectedMatch)}
+                      <span className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium border shadow-sm ${getStatusBadgeColor(selectedMatch.status)}`}>
+                        <span>{getStatusEmoji(selectedMatch.status)}</span>
+                        <span>{getStatusLabel(selectedMatch)}</span>
                       </span>
                     </div>
                   </div>
 
                   {/* Rationale */}
                   {selectedMatch.rationale && (
-                    <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 mb-4">
-                      <h4 className="font-semibold text-purple-900 mb-2">Why you matched:</h4>
-                      <p className="text-sm text-purple-800">
+                    <div className="backdrop-blur-xl bg-gradient-to-r from-purple-50/80 to-indigo-50/80 border border-purple-200/60 rounded-xl p-5 mb-5 shadow-sm">
+                      <h4 className="font-bold text-purple-900 mb-3 flex items-center gap-2">
+                        <span>✨</span>
+                        <span>Why you matched</span>
+                      </h4>
+                      <p className="text-sm text-purple-800 leading-relaxed mb-3">
                         {getRationaleMessage(selectedMatch.rationale)}
                       </p>
                       {selectedMatch.rationale.traitOverlap && selectedMatch.rationale.traitOverlap.length > 0 && (
-                        <div className="mt-3 flex flex-wrap gap-2">
+                        <div className="flex flex-wrap gap-2">
                           {selectedMatch.rationale.traitOverlap.slice(0, 6).map((trait) => (
                             <span
                               key={trait}
-                              className="px-2 py-1 bg-white border border-purple-300 rounded text-xs font-medium text-purple-700"
+                              className="px-3 py-1.5 bg-white/80 backdrop-blur-sm border border-purple-300 rounded-full text-xs font-medium text-purple-700 shadow-sm"
                             >
                               {trait}
                             </span>
@@ -754,34 +1192,36 @@ export default function Inbox() {
 
                   {/* Message from creator */}
                   {selectedMatch.message && (
-                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-4">
-                      <h4 className="font-semibold text-gray-900 mb-2">
-                        Message from @{selectedMatch.creator_username}:
+                    <div className="backdrop-blur-xl bg-gradient-to-r from-blue-50/80 to-indigo-50/80 border border-blue-200/60 rounded-xl p-5 mb-5 shadow-sm">
+                      <h4 className="font-bold text-blue-900 mb-3 flex items-center gap-2">
+                        <span>💬</span>
+                        <span>Message from @{selectedMatch.creator_username}</span>
                       </h4>
-                      <p className="text-sm text-gray-700">&quot;{selectedMatch.message}&quot;</p>
+                      <p className="text-sm text-blue-800 leading-relaxed italic">&quot;{selectedMatch.message}&quot;</p>
                     </div>
                   )}
 
                   {/* Action Buttons */}
                   {!isTerminalStatus(selectedMatch.status) && needsMyAction(selectedMatch) && (
-                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
-                      <p className="text-sm text-gray-700 mb-3 font-medium">
-                        Do you want to connect with this person?
+                    <div className="backdrop-blur-xl bg-gradient-to-r from-yellow-50/80 to-amber-50/80 border border-yellow-200/60 rounded-xl p-5 mb-5 shadow-sm">
+                      <p className="text-sm text-gray-800 mb-4 font-semibold flex items-center gap-2">
+                        <span>🤝</span>
+                        <span>Do you want to connect with this person?</span>
                       </p>
-                      <div className="flex space-x-3">
+                      <div className="flex gap-3">
                         <button
                           onClick={() => handleRespond(selectedMatch.id, 'accept')}
                           disabled={isTerminalStatus(selectedMatch.status) || actionLoading}
-                          className="flex-1 bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 disabled:bg-gray-300 font-medium"
+                          className="flex-1 bg-gradient-to-r from-green-500 to-emerald-500 text-white px-5 py-3 rounded-xl hover:from-green-600 hover:to-emerald-600 disabled:from-gray-300 disabled:to-gray-400 font-semibold shadow-md hover:shadow-lg transition-all duration-200 disabled:cursor-not-allowed"
                         >
-                          {actionLoading ? 'Processing...' : 'Accept'}
+                          {actionLoading ? '⏳ Processing...' : '✅ Accept'}
                         </button>
                         <button
                           onClick={() => handleRespond(selectedMatch.id, 'decline')}
                           disabled={isTerminalStatus(selectedMatch.status) || actionLoading}
-                          className="flex-1 bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 disabled:bg-gray-300 font-medium"
+                          className="flex-1 bg-gradient-to-r from-red-500 to-rose-500 text-white px-5 py-3 rounded-xl hover:from-red-600 hover:to-rose-600 disabled:from-gray-300 disabled:to-gray-400 font-semibold shadow-md hover:shadow-lg transition-all duration-200 disabled:cursor-not-allowed"
                         >
-                          Decline
+                          {actionLoading ? '⏳ Processing...' : '❌ Decline'}
                         </button>
                       </div>
                     </div>
@@ -792,27 +1232,28 @@ export default function Inbox() {
                     const chatRoomId = chatRoomMap.get(selectedMatch.id);
 
                     return (
-                      <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                        <h4 className="font-semibold text-green-900 mb-2">
-                          {selectedMatch.status === 'completed' ? 'Meeting Completed!' : 'Chat Room Ready!'}
+                      <div className="backdrop-blur-xl bg-gradient-to-r from-green-50/80 to-emerald-50/80 border border-green-200/60 rounded-xl p-6 shadow-sm">
+                        <h4 className="font-bold text-green-900 mb-3 flex items-center gap-2 text-lg">
+                          <span>{selectedMatch.status === 'completed' ? '🎉' : '💬'}</span>
+                          <span>{selectedMatch.status === 'completed' ? 'Meeting Completed!' : 'Chat Room Ready!'}</span>
                         </h4>
-                        <p className="text-sm text-green-800 mb-3">
+                        <p className="text-sm text-green-800 mb-4 leading-relaxed">
                           Both parties have accepted. Your chat room is ready to use!
                         </p>
 
                         {/* 2-Hour Rule Message */}
                         {selectedMatch.status === 'accepted' && (
-                          <div className="bg-blue-50 border border-blue-300 rounded-md p-3 mb-3">
-                            <p className="text-sm text-blue-800">
-                              ⏱️ <strong>Important:</strong> The 2-hour countdown will start as soon as either person enters the chat room or sends the first message. After 2 hours, the room will auto-close (read-only).
+                          <div className="backdrop-blur-xl bg-gradient-to-r from-blue-50/80 to-cyan-50/80 border border-blue-300/60 rounded-lg p-4 mb-4">
+                            <p className="text-sm text-blue-900 leading-relaxed">
+                              <span className="font-semibold">⏱️ Important:</span> The 2-hour countdown will start as soon as either person enters the chat room or sends the first message. After 2 hours, the room will auto-close (read-only).
                             </p>
                           </div>
                         )}
 
                         {/* Completed Message */}
                         {selectedMatch.status === 'completed' && (
-                          <div className="bg-blue-50 border border-blue-300 rounded-md p-3 mb-3">
-                            <p className="text-sm text-blue-800">
+                          <div className="backdrop-blur-xl bg-gradient-to-r from-purple-50/80 to-violet-50/80 border border-purple-300/60 rounded-lg p-4 mb-4">
+                            <p className="text-sm text-purple-900 leading-relaxed">
                               ✅ This meeting has been marked as completed. You can still access the chat history.
                             </p>
                           </div>
@@ -822,13 +1263,14 @@ export default function Inbox() {
                           {chatRoomId ? (
                             <button
                               onClick={() => router.push(`/mini/chat/${chatRoomId}`)}
-                              className="inline-block px-6 py-2 rounded-md font-medium bg-green-600 text-white hover:bg-green-700"
+                              className="px-8 py-3 rounded-xl font-semibold bg-gradient-to-r from-green-500 to-emerald-500 text-white hover:from-green-600 hover:to-emerald-600 shadow-md hover:shadow-lg transition-all duration-200"
                             >
-                              Open Chat
+                              💬 Open Chat
                             </button>
                           ) : (
-                            <div className="text-sm text-gray-600">
-                              Loading chat room...
+                            <div className="text-sm text-gray-600 flex items-center gap-2">
+                              <span className="animate-spin">⏳</span>
+                              <span>Loading chat room...</span>
                             </div>
                           )}
                         </div>
@@ -839,14 +1281,16 @@ export default function Inbox() {
 
                   {/* Created by system */}
                   {selectedMatch.created_by === 'system' && (
-                    <div className="mt-4 text-center">
-                      <p className="text-xs text-gray-500">
-                        This match was automatically generated by the system
+                    <div className="mt-6 text-center">
+                      <p className="text-xs text-gray-500 flex items-center justify-center gap-1.5">
+                        <span>🤖</span>
+                        <span>This match was automatically generated by the system</span>
                       </p>
                     </div>
                   )}
                 </>
               )}
+              </div>
             </div>
           </div>
         )}
