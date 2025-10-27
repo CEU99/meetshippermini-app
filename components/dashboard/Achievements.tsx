@@ -64,13 +64,13 @@ export function Achievements() {
 
   if (loading) {
     return (
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <h2 className="text-xl font-bold text-gray-900 mb-4">Achievements</h2>
+      <div className="backdrop-blur-xl bg-gradient-to-br from-white/80 via-purple-50/60 to-pink-50/60 rounded-2xl border border-white/60 shadow-lg p-8">
+        <h2 className="text-xl font-bold bg-gradient-to-r from-gray-900 via-purple-900 to-pink-900 bg-clip-text text-transparent mb-6">Achievements</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {[1, 2, 3].map((i) => (
             <div
               key={i}
-              className="h-48 bg-gray-100 rounded-lg animate-pulse"
+              className="h-56 bg-gradient-to-br from-gray-100/70 to-gray-50/70 rounded-2xl animate-pulse backdrop-blur-sm"
             ></div>
           ))}
         </div>
@@ -123,39 +123,41 @@ export function Achievements() {
   }));
 
   return (
-    <div className="bg-white rounded-lg shadow-md p-6">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-bold text-gray-900">Achievements</h2>
-        <span className="text-sm text-gray-600">
+    <div className="backdrop-blur-xl bg-gradient-to-br from-white/80 via-purple-50/60 to-pink-50/60 rounded-2xl border border-white/60 shadow-lg hover:shadow-2xl transition-all duration-300 p-8">
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-xl font-bold bg-gradient-to-r from-gray-900 via-purple-900 to-pink-900 bg-clip-text text-transparent">
+          Achievements
+        </h2>
+        <span className="px-3 py-1.5 rounded-xl text-sm font-semibold bg-white/70 backdrop-blur-sm border border-purple-200/60 text-purple-700">
           {earnedAchievements.length} / {allAchievements.length} earned
         </span>
       </div>
 
       {/* Wave Progress Indicator */}
-      <div className="mb-6 flex items-center gap-2">
+      <div className="mb-6 flex items-center gap-3">
         {[1, 2, 3, 4].map((wave) => (
           <div
             key={wave}
-            className={`flex-1 h-2 rounded-full ${
+            className={`flex-1 h-3 rounded-full transition-all duration-500 ${
               wave < unlockedWave
-                ? 'bg-green-500'
+                ? 'bg-gradient-to-r from-emerald-400 to-green-500 shadow-sm'
                 : wave === unlockedWave
-                ? 'bg-purple-500'
-                : 'bg-gray-200'
+                ? 'bg-gradient-to-r from-purple-400 to-purple-600 shadow-md animate-pulse'
+                : 'bg-gradient-to-r from-gray-200 to-gray-300'
             }`}
           />
         ))}
       </div>
 
-      <p className="text-sm text-gray-600 mb-4">
-        {unlockedWave === 1 && 'Complete Wave 1 to unlock Wave 2 achievements'}
-        {unlockedWave === 2 && 'Complete Wave 2 to unlock Wave 3 achievements'}
-        {unlockedWave === 3 && 'Complete Wave 3 to unlock the final achievement'}
-        {unlockedWave === 4 && 'All waves unlocked! Complete the final challenge.'}
+      <p className="text-sm font-medium text-gray-700 mb-6 px-4 py-3 bg-white/60 backdrop-blur-sm rounded-xl border border-purple-100/60">
+        {unlockedWave === 1 && '🎯 Complete Wave 1 to unlock Wave 2 achievements'}
+        {unlockedWave === 2 && '⚡ Complete Wave 2 to unlock Wave 3 achievements'}
+        {unlockedWave === 3 && '🚀 Complete Wave 3 to unlock the final achievement'}
+        {unlockedWave === 4 && '🎉 All waves unlocked! Complete the final challenge.'}
       </p>
 
       {/* Achievement Grid - 3 per row on desktop */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
         {achievementStates.map(({ achievement, earned, locked }) => (
           <AchievementCard
             key={achievement.code}
@@ -168,8 +170,8 @@ export function Achievements() {
 
       {/* Empty State */}
       {visibleAchievements.length === 0 && (
-        <div className="text-center py-8 text-gray-500">
-          <p>No achievements available yet. Complete actions to earn achievements!</p>
+        <div className="text-center py-12 px-4 bg-white/50 backdrop-blur-sm rounded-xl border border-gray-200/60">
+          <p className="text-gray-600 font-medium">No achievements available yet. Complete actions to earn achievements!</p>
         </div>
       )}
     </div>
