@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import "@farcaster/auth-kit/styles.css";
 import { FarcasterAuthProvider } from "@/components/providers/FarcasterAuthProvider";
+import { PrivyProvider } from "@/components/providers/PrivyProvider";
 import AppProviders from "@/app/providers";
 
 const geistSans = Geist({
@@ -30,9 +31,11 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <AppProviders>
-          <FarcasterAuthProvider>{children}</FarcasterAuthProvider>
-        </AppProviders>
+        <PrivyProvider>
+          <AppProviders>
+            <FarcasterAuthProvider>{children}</FarcasterAuthProvider>
+          </AppProviders>
+        </PrivyProvider>
       </body>
     </html>
   );

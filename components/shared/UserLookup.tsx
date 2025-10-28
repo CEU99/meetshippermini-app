@@ -23,6 +23,7 @@ interface UserLookupProps {
   excludeFid?: number; // Exclude this FID from being selected (e.g., prevent duplicate A/B)
   disabled?: boolean;
   slot?: 'a' | 'b'; // Which slot this is for (used when navigating to Explore Users)
+  source?: 'app-users' | 'farcaster' | 'suggest-match-meetshipper' | 'suggest-match-farcaster'; // Source parameter for navigation
 }
 
 export function UserLookup({
@@ -34,6 +35,7 @@ export function UserLookup({
   excludeFid,
   disabled = false,
   slot,
+  source,
 }: UserLookupProps) {
   const router = useRouter();
   const [userInput, setUserInput] = useState('');
@@ -145,7 +147,14 @@ export function UserLookup({
           {/* Find User button - Navigate to Users */}
           <button
             type="button"
-            onClick={() => router.push('/users')}
+            onClick={() => {
+              const params = new URLSearchParams();
+              if (slot) params.append('slot', slot.toUpperCase());
+              if (source) params.append('source', source);
+              if (excludeFid) params.append('excludeFid', excludeFid.toString());
+              const queryString = params.toString();
+              router.push(`/users${queryString ? `?${queryString}` : ''}`);
+            }}
             disabled={disabled}
             className="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 font-medium text-sm disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
           >
@@ -201,13 +210,11 @@ export function UserLookup({
             <button
               type="button"
               onClick={() => {
-                if (slot) {
-                  // Navigate to Users page with slot parameter
-                  router.push(`/users?slot=${slot.toUpperCase()}`);
-                } else {
-                  // Fallback: Navigate to Users without slot
-                  router.push('/users');
-                }
+                const params = new URLSearchParams();
+                if (slot) params.append('slot', slot.toUpperCase());
+                if (source) params.append('source', source);
+                const queryString = params.toString();
+                router.push(`/users${queryString ? `?${queryString}` : ''}`);
               }}
               disabled={disabled}
               className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 font-medium text-sm disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"

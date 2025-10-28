@@ -14,7 +14,7 @@ export class ApiError extends Error {
 export async function apiFetch<T = unknown>(
   url: string,
   options?: RequestInit
-): Promise<T> {
+): Promise<T | null> {
   try {
     const response = await fetch(url, options);
 
@@ -36,6 +36,12 @@ export async function apiFetch<T = unknown>(
         }
       } catch {
         // Failed to parse error response, use default message
+      }
+
+      // Return null for 404 errors or "User not found" instead of throwing
+      if (response.status === 404 || errorMessage.toLowerCase().includes('user not found')) {
+        console.log(`[API] User not found (404): ${url}`);
+        return null;
       }
 
       throw new ApiError(response.status, errorMessage, errorData);

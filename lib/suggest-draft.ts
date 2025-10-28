@@ -14,6 +14,8 @@ export interface SuggestDraftUser {
 export interface SuggestDraft {
   a?: SuggestDraftUser;
   b?: SuggestDraftUser;
+  farcasterA?: SuggestDraftUser;
+  farcasterB?: SuggestDraftUser;
 }
 
 const STORAGE_KEY = 'suggestDraft';
@@ -43,8 +45,8 @@ export function setSuggestDraft(draft: SuggestDraft): void {
   if (typeof window === 'undefined') return;
 
   try {
-    if (!draft.a && !draft.b) {
-      // If both empty, just clear storage
+    if (!draft.a && !draft.b && !draft.farcasterA && !draft.farcasterB) {
+      // If all empty, just clear storage
       sessionStorage.removeItem(STORAGE_KEY);
     } else {
       sessionStorage.setItem(STORAGE_KEY, JSON.stringify(draft));
@@ -99,5 +101,23 @@ export function setDraftUserA(user: SuggestDraftUser | undefined): void {
 export function setDraftUserB(user: SuggestDraftUser | undefined): void {
   const draft = getSuggestDraft();
   draft.b = user;
+  setSuggestDraft(draft);
+}
+
+/**
+ * Set Farcaster User A in the draft
+ */
+export function setDraftFarcasterUserA(user: SuggestDraftUser | undefined): void {
+  const draft = getSuggestDraft();
+  draft.farcasterA = user;
+  setSuggestDraft(draft);
+}
+
+/**
+ * Set Farcaster User B in the draft
+ */
+export function setDraftFarcasterUserB(user: SuggestDraftUser | undefined): void {
+  const draft = getSuggestDraft();
+  draft.farcasterB = user;
   setSuggestDraft(draft);
 }

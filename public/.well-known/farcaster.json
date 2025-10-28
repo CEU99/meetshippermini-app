@@ -2,24 +2,24 @@
   "version": "1.0.0",
   "accountAssociation": {
     "header": "eyJmaWQiOjU0MzU4MSwidHlwZSI6ImN1c3RvZHkiLCJrZXkiOiIweDI0Mjc1NjJGYzY2RGNBNDJCNkYxZjM5NDhEMTFhOGNkNjMzZUUzMmUifQ",
-    "payload": "eyJkb21haW4iOiJtZWV0c2hpcHBlci5jb20ifQ",
-    "signature": "dlEs04zwAZaFF++Ora36BQBTvn61bAhsIRPA4TEBJplHc4IiUqEu19cpKOnFYhNc7R4ZZPN8h+84ieHPC5kR2hw="
+    "payload": "eyJkb21haW4iOiJ1bmF1dGhlbnRpYy1ub25yZXZvbHRpbmdseS1henppZS5uZ3Jvay1mcmVlLmRldiJ9",
+    "signature": "LqhFi+R/+5D2iTOl1GAQEtNw4PyW0rQg+y6/X3lr4lBHNBP3hOLPqT4KNA4keA/ohd6QF7p1FaJLAZQvHKnnfxs="
   },
   "miniApp": {
     "name": "MeetShipper",
     "version": "1.0.0",
-    "description": "Connect. Verify. Grow On-Chain. Base Mini App by ULU.",
-    "homeUrl": "https://meetshipper.com",
-    "iconUrl": "https://meetshipper.com/cover.png",
-    "imageUrl": "https://meetshipper.com/cover.png",
-    "splashImageUrl": "https://meetshipper.com/cover.png",
+    "description": "MeetShipper helps Farcaster users connect, verify, and build meaningful on-chain relationships. Built on Base by ULU.",
+    "homeUrl": "https://unauthentic-nonrevoltingly-azzie.ngrok-free.dev",
+    "iconUrl": "https://unauthentic-nonrevoltingly-azzie.ngrok-free.dev/cover.png",
+    "imageUrl": "https://unauthentic-nonrevoltingly-azzie.ngrok-free.dev/cover.png",
+    "splashImageUrl": "https://unauthentic-nonrevoltingly-azzie.ngrok-free.dev/cover.png",
     "buttonLabel": "Launch MeetShipper",
     "theme": {
       "primaryColor": "#4F46E5",
       "backgroundColor": "#1E1B4B"
     },
     "frame": {
-      "url": "https://meetshipper.com/api/frame"
+      "url": "https://unauthentic-nonrevoltingly-azzie.ngrok-free.dev/api/frame"
     },
     "creator": {
       "fid": "543541"

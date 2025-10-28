@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import toast, { Toaster } from 'react-hot-toast';
 import { useFarcasterAuth } from '@/components/providers/FarcasterAuthProvider';
 import { Navigation } from '@/components/shared/Navigation';
 import { UserLookup, UserProfile } from '@/components/shared/UserLookup';
@@ -11,6 +12,8 @@ import {
   getSuggestDraft,
   setSuggestDraft,
   clearSuggestDraft,
+  setDraftFarcasterUserA,
+  setDraftFarcasterUserB,
   type SuggestDraftUser,
 } from '@/lib/suggest-draft';
 
@@ -20,10 +23,16 @@ function SuggestMatchContent() {
   const { user, isAuthenticated, loading: authLoading } = useFarcasterAuth();
   const [userA, setUserA] = useState<UserProfile | null>(null);
   const [userB, setUserB] = useState<UserProfile | null>(null);
+  const [farcasterUserA, setFarcasterUserA] = useState<UserProfile | null>(null);
+  const [farcasterUserB, setFarcasterUserB] = useState<UserProfile | null>(null);
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [initialized, setInitialized] = useState(false);
+
+  // Matching mode state
+  const [matchWithMeetShipper, setMatchWithMeetShipper] = useState(false);
+  const [matchWithFarcaster, setMatchWithFarcaster] = useState(false);
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -32,12 +41,9 @@ function SuggestMatchContent() {
     }
   }, [isAuthenticated, authLoading, router]);
 
-  // Initialize from sessionStorage and URL params
+  // Initialize from sessionStorage (one-time)
   useEffect(() => {
     if (!isAuthenticated || !user || initialized) return;
-
-    const slot = searchParams.get('slot') as 'a' | 'b' | null;
-    const fidParam = searchParams.get('fid');
 
     // Load existing draft
     const draft = getSuggestDraft();
@@ -63,24 +69,89 @@ function SuggestMatchContent() {
       });
     }
 
-    // Handle prefill from URL
-    if (fidParam) {
-      const fidNum = parseInt(fidParam);
-      if (!isNaN(fidNum) && fidNum !== user.fid) {
-        fetchAndPrefillUser(fidNum, slot, draft);
-      }
+    // Load Farcaster users from draft
+    if (draft.farcasterA) {
+      setFarcasterUserA({
+        fid: draft.farcasterA.fid,
+        username: draft.farcasterA.username,
+        display_name: draft.farcasterA.displayName,
+        avatar_url: draft.farcasterA.pfpUrl,
+        bio: draft.farcasterA.bio,
+      });
+    }
+
+    if (draft.farcasterB) {
+      setFarcasterUserB({
+        fid: draft.farcasterB.fid,
+        username: draft.farcasterB.username,
+        display_name: draft.farcasterB.displayName,
+        avatar_url: draft.farcasterB.pfpUrl,
+        bio: draft.farcasterB.bio,
+      });
     }
 
     setInitialized(true);
-  }, [searchParams, isAuthenticated, user, initialized]);
+  }, [isAuthenticated, user, initialized]);
+
+  // Handle URL params for user selection (every time params change)
+  useEffect(() => {
+    if (!isAuthenticated || !user) return;
+
+    const slotParam = searchParams.get('slot');
+    const slot = slotParam ? (slotParam.toLowerCase() as 'a' | 'b') : null;
+    const fidParam = searchParams.get('fid');
+    const sourceParam = searchParams.get('source'); // 'meetshipper' or 'farcaster'
+
+    // Handle prefill from URL
+    if (fidParam && slot) {
+      const fidNum = parseInt(fidParam);
+      if (!isNaN(fidNum) && fidNum !== user.fid) {
+        // Determine matching mode from source parameter
+        if (sourceParam === 'farcaster') {
+          // Automatically check the Farcaster checkbox (only once)
+          if (!matchWithFarcaster) {
+            setMatchWithFarcaster(true);
+            setMatchWithMeetShipper(false);
+            return; // Exit early to avoid processing before checkbox state updates
+          }
+
+          // Process Farcaster user selection
+          handleFarcasterUserSelection(fidNum, slot);
+        } else if (sourceParam === 'meetshipper') {
+          // Automatically check the MeetShipper checkbox (only once)
+          if (!matchWithMeetShipper) {
+            setMatchWithMeetShipper(true);
+            setMatchWithFarcaster(false);
+            return; // Exit early to avoid processing before checkbox state updates
+          }
+
+          // Process MeetShipper user selection
+          const draft = getSuggestDraft();
+          fetchAndPrefillUser(fidNum, slot, draft, false);
+        }
+      }
+    }
+  }, [searchParams, isAuthenticated, user, matchWithFarcaster, matchWithMeetShipper]);
 
   const fetchAndPrefillUser = async (
     fid: number,
     slot: 'a' | 'b' | null,
-    existingDraft: any
+    existingDraft: any,
+    isFarcasterMode: boolean = false
   ) => {
+    // Note: Farcaster mode is now handled by handleFarcasterUserSelection
+    // This function only handles MeetShipper mode
+
+    // For MeetShipper mode, validate through API
     try {
       const data = await apiClient.get<UserProfile>(`/api/users/${fid}`);
+
+      // Check if user was found (null returned for 404)
+      if (!data) {
+        console.log('[Suggest] User not found for FID:', fid);
+        setError(`User not found. Please check the FID (${fid}) or try again.`);
+        return;
+      }
 
       const draftUser: SuggestDraftUser = {
         fid: data.fid,
@@ -90,19 +161,19 @@ function SuggestMatchContent() {
         bio: data.bio,
       };
 
+      // Update MeetShipper user state
       if (slot === 'a') {
         setUserA(data);
         setSuggestDraft({ ...existingDraft, a: draftUser });
       } else if (slot === 'b') {
-        // Check if trying to set same user as A
         if (existingDraft.a?.fid === fid) {
-          setError('Cannot select the same user for both positions');
+          toast.error('User A and User B must be different.');
           return;
         }
         setUserB(data);
         setSuggestDraft({ ...existingDraft, b: draftUser });
       } else {
-        // No slot specified, use heuristic: fill A first, then B
+        // No slot specified, use heuristic
         if (!existingDraft.a) {
           setUserA(data);
           setSuggestDraft({ ...existingDraft, a: draftUser });
@@ -112,11 +183,69 @@ function SuggestMatchContent() {
         }
       }
     } catch (err) {
-      console.error('Error prefilling user:', err);
+      console.error('Error fetching MeetShipper user:', err);
+      setError('An error occurred while fetching the user. Please try again.');
+    }
+  };
+
+  // Handle Farcaster user selection from URL params
+  const handleFarcasterUserSelection = async (fid: number, slot: 'a' | 'b') => {
+    console.log('[Suggest] Fetching Farcaster user FID:', fid, 'for slot:', slot);
+
+    try {
+      const data = await apiClient.get<UserProfile>(`/api/farcaster/user/${fid}`);
+
+      // Check if user was found (null returned for 404)
+      if (!data) {
+        console.log('[Suggest] Farcaster user not found for FID:', fid);
+        setError(`Farcaster user not found. Please check the FID (${fid}) or try again.`);
+        return;
+      }
+
+      console.log('[Suggest] Fetched Farcaster user:', data);
+
+      // Convert to draft format
+      const draftUser: SuggestDraftUser = {
+        fid: data.fid,
+        username: data.username,
+        displayName: data.display_name,
+        pfpUrl: data.avatar_url,
+        bio: data.bio,
+      };
+
+      // Update state based on slot WITHOUT resetting the other slot
+      if (slot === 'a') {
+        // Check for duplicate with User B
+        if (farcasterUserB && farcasterUserB.fid === fid) {
+          toast.error('Farcaster User A and User B must be different.');
+          return;
+        }
+        setFarcasterUserA(data);
+        setDraftFarcasterUserA(draftUser);
+      } else if (slot === 'b') {
+        // Check for duplicate with User A
+        if (farcasterUserA && farcasterUserA.fid === fid) {
+          toast.error('Farcaster User A and User B must be different.');
+          return;
+        }
+        setFarcasterUserB(data);
+        setDraftFarcasterUserB(draftUser);
+      }
+
+      console.log('[Suggest] Successfully set Farcaster user for slot:', slot);
+    } catch (err) {
+      console.error('Error fetching Farcaster user:', err);
+      setError('An error occurred while fetching the Farcaster user. Please try again.');
     }
   };
 
   const handleUserAChange = (newUser: UserProfile | null) => {
+    // Check if trying to select same user as B
+    if (newUser && userB && newUser.fid === userB.fid) {
+      toast.error('User A and User B must be different.');
+      return;
+    }
+
     setUserA(newUser);
     const draft = getSuggestDraft();
 
@@ -135,6 +264,12 @@ function SuggestMatchContent() {
   };
 
   const handleUserBChange = (newUser: UserProfile | null) => {
+    // Check if trying to select same user as A
+    if (newUser && userA && newUser.fid === userA.fid) {
+      toast.error('User A and User B must be different.');
+      return;
+    }
+
     setUserB(newUser);
     const draft = getSuggestDraft();
 
@@ -152,6 +287,77 @@ function SuggestMatchContent() {
     }
   };
 
+  const handleFarcasterUserAChange = (newUser: UserProfile | null) => {
+    // Check if trying to select same user as Farcaster B
+    if (newUser && farcasterUserB && newUser.fid === farcasterUserB.fid) {
+      toast.error('Farcaster User A and User B must be different.');
+      return;
+    }
+    setFarcasterUserA(newUser);
+
+    // Save to draft
+    if (newUser) {
+      const draftUser: SuggestDraftUser = {
+        fid: newUser.fid,
+        username: newUser.username,
+        displayName: newUser.display_name,
+        pfpUrl: newUser.avatar_url,
+        bio: newUser.bio,
+      };
+      setDraftFarcasterUserA(draftUser);
+    } else {
+      setDraftFarcasterUserA(undefined);
+    }
+  };
+
+  const handleFarcasterUserBChange = (newUser: UserProfile | null) => {
+    // Check if trying to select same user as Farcaster A
+    if (newUser && farcasterUserA && newUser.fid === farcasterUserA.fid) {
+      toast.error('Farcaster User A and User B must be different.');
+      return;
+    }
+    setFarcasterUserB(newUser);
+
+    // Save to draft
+    if (newUser) {
+      const draftUser: SuggestDraftUser = {
+        fid: newUser.fid,
+        username: newUser.username,
+        displayName: newUser.display_name,
+        pfpUrl: newUser.avatar_url,
+        bio: newUser.bio,
+      };
+      setDraftFarcasterUserB(draftUser);
+    } else {
+      setDraftFarcasterUserB(undefined);
+    }
+  };
+
+  // Handlers for mutually exclusive checkboxes
+  const handleMeetShipperCheckbox = (checked: boolean) => {
+    setMatchWithMeetShipper(checked);
+    if (checked) {
+      setMatchWithFarcaster(false);
+      setFarcasterUserA(null);
+      setFarcasterUserB(null);
+      // Clear Farcaster draft
+      setDraftFarcasterUserA(undefined);
+      setDraftFarcasterUserB(undefined);
+    }
+  };
+
+  const handleFarcasterCheckbox = (checked: boolean) => {
+    setMatchWithFarcaster(checked);
+    if (checked) {
+      setMatchWithMeetShipper(false);
+      setUserA(null);
+      setUserB(null);
+      // Clear MeetShipper draft
+      const draft = getSuggestDraft();
+      setSuggestDraft({ ...draft, a: undefined, b: undefined });
+    }
+  };
+
   // Validate message
   const messageError = (() => {
     if (message.length === 0) return null;
@@ -161,19 +367,41 @@ function SuggestMatchContent() {
   })();
 
   // Check if form is valid
-  const isFormValid =
-    userA &&
-    userB &&
-    userA.fid !== userB.fid &&
-    message.length >= 20 &&
-    message.length <= 100;
+  const isFormValid = (() => {
+    const messageValid = message.length >= 20 && message.length <= 100;
+
+    if (matchWithMeetShipper) {
+      return userA && userB && userA.fid !== userB.fid && messageValid;
+    }
+
+    if (matchWithFarcaster) {
+      return farcasterUserA && farcasterUserB && farcasterUserA.fid !== farcasterUserB.fid && messageValid;
+    }
+
+    return false;
+  })();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isFormValid || !userA || !userB) return;
+    if (!isFormValid) return;
+
+    let activeUserA: UserProfile | null = null;
+    let activeUserB: UserProfile | null = null;
+
+    if (matchWithMeetShipper) {
+      if (!userA || !userB) return;
+      activeUserA = userA;
+      activeUserB = userB;
+    } else if (matchWithFarcaster) {
+      if (!farcasterUserA || !farcasterUserB) return;
+      activeUserA = farcasterUserA;
+      activeUserB = farcasterUserB;
+    } else {
+      return;
+    }
 
     // Additional validation: A ≠ B
-    if (userA.fid === userB.fid) {
+    if (activeUserA.fid === activeUserB.fid) {
       setError('User A and User B must be different people');
       return;
     }
@@ -182,13 +410,13 @@ function SuggestMatchContent() {
     setLoading(true);
 
     try {
-      const response = await apiClient.post('/api/matches/suggestions', {
-        userAFid: userA.fid,
-        userBFid: userB.fid,
+      const response = await apiClient.post<{ success: boolean }>('/api/matches/suggestions', {
+        userAFid: activeUserA.fid,
+        userBFid: activeUserB.fid,
         message: message.trim(),
       });
 
-      if (response.success) {
+      if (response?.success) {
         // Clear saved state
         clearSuggestDraft();
 
@@ -216,6 +444,7 @@ function SuggestMatchContent() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <Toaster position="top-center" />
       <Navigation />
 
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -327,6 +556,36 @@ function SuggestMatchContent() {
 
           {/* Form */}
           <div className="space-y-6">
+            {/* MeetShipper Users Checkbox */}
+            <div className="mb-6 flex flex-col lg:flex-row gap-4">
+              <div className="flex-shrink-0">
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={matchWithMeetShipper}
+                    onChange={(e) => handleMeetShipperCheckbox(e.target.checked)}
+                    disabled={matchWithFarcaster}
+                    className="w-5 h-5 text-[#4F46E5] border-2 border-gray-300 rounded focus:ring-2 focus:ring-[#4F46E5] disabled:opacity-50 disabled:cursor-not-allowed"
+                  />
+                  <span className={`text-base font-bold ${matchWithFarcaster ? 'text-gray-400' : 'text-[#4F46E5]'}`}>
+                    Match Two Different MeetShipper Users
+                  </span>
+                </label>
+              </div>
+
+              {/* How It Works Info Box */}
+              <div className="flex-1 bg-gradient-to-br from-violet-50 to-purple-50 rounded-xl p-4 shadow-sm border border-violet-200">
+                <h4 className="text-sm font-semibold text-violet-600 mb-2">How It Works</h4>
+                <p className="text-xs text-gray-700 leading-relaxed">
+                  For User A, click Find User to select or enter their FID.
+                  Verify with the Lookup button.
+                  Then repeat the same steps for User B.
+                  Once both users are set, your message and suggestion notification are sent to each of them.
+                  Both users can accept or decline; you can track their responses from the Inbox page.
+                </p>
+              </div>
+            </div>
+
             {/* User A FID */}
             <UserLookup
               label="User A FID"
@@ -335,6 +594,8 @@ function SuggestMatchContent() {
               currentUserFid={user.fid}
               excludeFid={userB?.fid}
               slot="a"
+              source="suggest-match-meetshipper"
+              disabled={!matchWithMeetShipper}
             />
 
             {/* User B FID */}
@@ -345,10 +606,89 @@ function SuggestMatchContent() {
               currentUserFid={user.fid}
               excludeFid={userA?.fid}
               slot="b"
+              source="suggest-match-meetshipper"
+              disabled={!matchWithMeetShipper}
             />
 
-            {/* A ≠ B Validation Warning */}
-            {userA && userB && userA.fid === userB.fid && (
+            {/* Farcaster Users Checkbox */}
+            <div className="mb-6 mt-8 pt-8 border-t border-gray-200 flex flex-col lg:flex-row gap-4">
+              <div className="flex-shrink-0">
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={matchWithFarcaster}
+                    onChange={(e) => handleFarcasterCheckbox(e.target.checked)}
+                    disabled={matchWithMeetShipper}
+                    className="w-5 h-5 text-[#4F46E5] border-2 border-gray-300 rounded focus:ring-2 focus:ring-[#4F46E5] disabled:opacity-50 disabled:cursor-not-allowed"
+                  />
+                  <span className={`text-base font-bold ${matchWithMeetShipper ? 'text-gray-400' : 'text-[#4F46E5]'}`}>
+                    Match Two Different Farcaster Users
+                  </span>
+                </label>
+              </div>
+
+              {/* How It Works Info Box */}
+              <div className="flex-1 bg-gradient-to-br from-violet-50 to-purple-50 rounded-xl p-4 shadow-sm border border-violet-200">
+                <h4 className="text-sm font-semibold text-violet-600 mb-2">How It Works</h4>
+                <p className="text-xs text-gray-700 leading-relaxed">
+                  For User A, click Find User to select or enter their FID.
+                  Verify with the Lookup button.
+                  Then repeat the same steps for User B.
+                  Once both users are verified, a message notification is created and delivered to both users' Farcaster inboxes.
+                  Each user can open the Meet Shipper link from that message to review and respond to the suggested match.
+                  You can monitor accept or decline statuses through the Inbox page.
+                </p>
+              </div>
+            </div>
+
+            {/* Farcaster User A FID */}
+            <UserLookup
+              label="Farcaster User A FID"
+              value={farcasterUserA}
+              onChange={handleFarcasterUserAChange}
+              currentUserFid={user.fid}
+              excludeFid={farcasterUserB?.fid}
+              slot="a"
+              source="suggest-match-farcaster"
+              disabled={!matchWithFarcaster}
+            />
+
+            {/* Farcaster User B FID */}
+            <UserLookup
+              label="Farcaster User B FID"
+              value={farcasterUserB}
+              onChange={handleFarcasterUserBChange}
+              currentUserFid={user.fid}
+              excludeFid={farcasterUserA?.fid}
+              slot="b"
+              source="suggest-match-farcaster"
+              disabled={!matchWithFarcaster}
+            />
+
+            {/* A ≠ B Validation Warning - MeetShipper */}
+            {matchWithMeetShipper && userA && userB && userA.fid === userB.fid && (
+              <div className="backdrop-blur-xl bg-gradient-to-r from-red-50/80 to-pink-50/80 border border-red-200/60 rounded-xl p-4">
+                <div className="flex items-start gap-2">
+                  <svg
+                    className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                  <p className="text-sm text-red-800 font-medium">
+                    User A and User B must be different people. Please select different users.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* A ≠ B Validation Warning - Farcaster */}
+            {matchWithFarcaster && farcasterUserA && farcasterUserB && farcasterUserA.fid === farcasterUserB.fid && (
               <div className="backdrop-blur-xl bg-gradient-to-r from-red-50/80 to-pink-50/80 border border-red-200/60 rounded-xl p-4">
                 <div className="flex items-start gap-2">
                   <svg
@@ -386,8 +726,11 @@ function SuggestMatchContent() {
                 required
                 rows={5}
                 maxLength={100}
+                disabled={!matchWithMeetShipper && !matchWithFarcaster}
                 className={`w-full px-4 py-3 bg-white/70 backdrop-blur-sm border rounded-xl focus:ring-2 text-gray-900 placeholder:text-gray-400 resize-none transition-all duration-200 ${
-                  message.length > 0 && messageError
+                  !matchWithMeetShipper && !matchWithFarcaster
+                    ? 'opacity-60 cursor-not-allowed'
+                    : message.length > 0 && messageError
                     ? 'border-red-300 focus:ring-red-400 focus:border-red-400'
                     : 'border-purple-200/60 focus:ring-purple-400 focus:border-purple-400 hover:border-purple-300'
                 }`}
@@ -467,32 +810,64 @@ function SuggestMatchContent() {
             </div>
 
             {/* Validation Summary */}
-            {!isFormValid && (userA || userB || message.length > 0) && (
+            {!isFormValid && (userA || userB || farcasterUserA || farcasterUserB || message.length > 0) && (
               <div className="backdrop-blur-xl bg-gradient-to-r from-gray-50/80 to-slate-50/80 border border-gray-200/60 rounded-xl p-4">
                 <p className="text-xs font-bold text-gray-700 mb-2 uppercase tracking-wide">
                   To submit suggestion:
                 </p>
                 <ul className="text-xs text-gray-600 space-y-1.5">
-                  <li className={`flex items-center gap-2 ${userA ? 'text-emerald-600 font-medium' : ''}`}>
-                    <span className="flex-shrink-0">{userA ? '✓' : '○'}</span>
-                    <span>Select User A</span>
+                  <li className={`flex items-center gap-2 ${matchWithMeetShipper || matchWithFarcaster ? 'text-emerald-600 font-medium' : ''}`}>
+                    <span className="flex-shrink-0">{matchWithMeetShipper || matchWithFarcaster ? '✓' : '○'}</span>
+                    <span>Select a matching type (MeetShipper or Farcaster)</span>
                   </li>
-                  <li className={`flex items-center gap-2 ${userB ? 'text-emerald-600 font-medium' : ''}`}>
-                    <span className="flex-shrink-0">{userB ? '✓' : '○'}</span>
-                    <span>Select User B</span>
-                  </li>
-                  <li
-                    className={`flex items-center gap-2 ${
-                      userA && userB && userA.fid !== userB.fid
-                        ? 'text-emerald-600 font-medium'
-                        : ''
-                    }`}
-                  >
-                    <span className="flex-shrink-0">
-                      {userA && userB && userA.fid !== userB.fid ? '✓' : '○'}
-                    </span>
-                    <span>User A and User B must be different</span>
-                  </li>
+                  {matchWithMeetShipper && (
+                    <>
+                      <li className={`flex items-center gap-2 ${userA ? 'text-emerald-600 font-medium' : ''}`}>
+                        <span className="flex-shrink-0">{userA ? '✓' : '○'}</span>
+                        <span>Select User A</span>
+                      </li>
+                      <li className={`flex items-center gap-2 ${userB ? 'text-emerald-600 font-medium' : ''}`}>
+                        <span className="flex-shrink-0">{userB ? '✓' : '○'}</span>
+                        <span>Select User B</span>
+                      </li>
+                      <li
+                        className={`flex items-center gap-2 ${
+                          userA && userB && userA.fid !== userB.fid
+                            ? 'text-emerald-600 font-medium'
+                            : ''
+                        }`}
+                      >
+                        <span className="flex-shrink-0">
+                          {userA && userB && userA.fid !== userB.fid ? '✓' : '○'}
+                        </span>
+                        <span>User A and User B must be different</span>
+                      </li>
+                    </>
+                  )}
+                  {matchWithFarcaster && (
+                    <>
+                      <li className={`flex items-center gap-2 ${farcasterUserA ? 'text-emerald-600 font-medium' : ''}`}>
+                        <span className="flex-shrink-0">{farcasterUserA ? '✓' : '○'}</span>
+                        <span>Select Farcaster User A</span>
+                      </li>
+                      <li className={`flex items-center gap-2 ${farcasterUserB ? 'text-emerald-600 font-medium' : ''}`}>
+                        <span className="flex-shrink-0">{farcasterUserB ? '✓' : '○'}</span>
+                        <span>Select Farcaster User B</span>
+                      </li>
+                      <li
+                        className={`flex items-center gap-2 ${
+                          farcasterUserA && farcasterUserB && farcasterUserA.fid !== farcasterUserB.fid
+                            ? 'text-emerald-600 font-medium'
+                            : ''
+                        }`}
+                      >
+                        <span className="flex-shrink-0">
+                          {farcasterUserA && farcasterUserB && farcasterUserA.fid !== farcasterUserB.fid ? '✓' : '○'}
+                        </span>
+                        <span>User A and User B must be different</span>
+                      </li>
+                    </>
+                  )}
                   <li
                     className={`flex items-center gap-2 ${
                       message.length >= 20 && message.length <= 100

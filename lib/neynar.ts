@@ -191,6 +191,60 @@ class NeynarAPI {
       return [];
     }
   }
+
+  // Send a direct cast (requires signer UUID)
+  async sendDirectCast(params: {
+    signerUuid: string;
+    text: string;
+    recipientFid: number;
+  }): Promise<{ success: boolean; cast?: any; error?: string }> {
+    try {
+      const response = await this.fetch('/farcaster/cast', {
+        method: 'POST',
+        body: JSON.stringify({
+          signer_uuid: params.signerUuid,
+          text: params.text,
+          parent: {
+            fid: params.recipientFid,
+          },
+        }),
+      });
+
+      return { success: true, cast: response };
+    } catch (error) {
+      console.error('Error sending direct cast:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to send direct cast',
+      };
+    }
+  }
+
+  // Publish a cast (public post)
+  async publishCast(params: {
+    signerUuid: string;
+    text: string;
+    embeds?: Array<{ url: string }>;
+  }): Promise<{ success: boolean; cast?: any; error?: string }> {
+    try {
+      const response = await this.fetch('/farcaster/cast', {
+        method: 'POST',
+        body: JSON.stringify({
+          signer_uuid: params.signerUuid,
+          text: params.text,
+          embeds: params.embeds || [],
+        }),
+      });
+
+      return { success: true, cast: response };
+    } catch (error) {
+      console.error('Error publishing cast:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to publish cast',
+      };
+    }
+  }
 }
 
 // Export singleton instance

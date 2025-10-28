@@ -3,6 +3,8 @@ import { getSession } from '@/lib/auth';
 import { getServerSupabase } from '@/lib/supabase';
 import { isInCooldown, hasActiveMatch, getPendingProposalCount, MATCHING_CONFIG } from '@/lib/services/matching-service';
 import { checkMatchRequestAchievements } from '@/lib/services/achievement-service';
+import { neynarAPI } from '@/lib/neynar';
+import { sendMatchRequestNotification } from '@/lib/services/farcaster-notification-service';
 
 /**
  * POST /api/matches/manual
@@ -65,18 +67,47 @@ export async function POST(request: NextRequest) {
     const supabase = getServerSupabase();
     const requesterFid = session.fid;
 
-    // Check if target user exists
+    // Check if target user exists in our database
     const { data: targetUser, error: userError } = await supabase
       .from('users')
       .select('fid, username, display_name')
       .eq('fid', targetFid)
       .single();
 
+    let isExternalUser = false;
+    let externalUserData = null;
+
+    // If user not found in database, try fetching from Farcaster via Neynar
     if (userError || !targetUser) {
-      return NextResponse.json(
-        { error: 'Target user not found' },
-        { status: 404 }
-      );
+      console.log('[API] Target user not in database, fetching from Farcaster:', targetFid);
+
+      try {
+        const farcasterUser = await neynarAPI.getUserByFid(targetFid);
+
+        if (!farcasterUser) {
+          return NextResponse.json(
+            { error: 'Target user not found on Farcaster' },
+            { status: 404 }
+          );
+        }
+
+        isExternalUser = true;
+        externalUserData = {
+          fid: farcasterUser.fid,
+          username: farcasterUser.username || `user${farcasterUser.fid}`,
+          display_name: farcasterUser.display_name || farcasterUser.username || `User ${farcasterUser.fid}`,
+          avatar_url: farcasterUser.pfp_url || '',
+          bio: farcasterUser.profile?.bio?.text || '',
+        };
+
+        console.log('[API] External Farcaster user found:', externalUserData.username);
+      } catch (error) {
+        console.error('[API] Error fetching user from Farcaster:', error);
+        return NextResponse.json(
+          { error: 'Target user not found' },
+          { status: 404 }
+        );
+      }
     }
 
     // Check for cooldown
@@ -99,7 +130,6 @@ export async function POST(request: NextRequest) {
 
     // Check pending proposal limits
     const requesterPending = await getPendingProposalCount(requesterFid);
-    const targetPending = await getPendingProposalCount(targetFid);
 
     if (requesterPending >= MATCHING_CONFIG.MAX_PROPOSALS_PER_USER) {
       return NextResponse.json(
@@ -108,33 +138,46 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (targetPending >= MATCHING_CONFIG.MAX_PROPOSALS_PER_USER) {
-      return NextResponse.json(
-        { error: `${targetUser.display_name || targetUser.username} has too many pending matches. Please try again later.` },
-        { status: 400 }
-      );
+    // Only check target pending for registered users
+    if (!isExternalUser) {
+      const targetPending = await getPendingProposalCount(targetFid);
+
+      if (targetPending >= MATCHING_CONFIG.MAX_PROPOSALS_PER_USER) {
+        return NextResponse.json(
+          { error: `${targetUser.display_name || targetUser.username} has too many pending matches. Please try again later.` },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Prepare match data
+    const matchData: any = {
+      user_a_fid: requesterFid, // Person sending the request
+      user_b_fid: targetFid,     // Person receiving the request
+      created_by_fid: requesterFid,
+      created_by: 'user', // Manual match from user
+      status: isExternalUser ? 'pending_external' : 'proposed',
+      message: message,
+      rationale: {
+        score: 0,
+        manualMatch: true,
+        requestedBy: requesterFid,
+        introductionMessage: message,
+        isExternalUser: isExternalUser,
+      },
+      a_accepted: false, // Requester hasn't "accepted" yet (they initiated)
+      b_accepted: false, // Target hasn't accepted yet
+    };
+
+    // For external users, store their data in the rationale
+    if (isExternalUser && externalUserData) {
+      matchData.rationale.externalUserData = externalUserData;
     }
 
     // Create the match
-    // In manual matching: requester is user_a, target is user_b
     const { data: match, error: matchError } = await supabase
       .from('matches')
-      .insert({
-        user_a_fid: requesterFid, // Person sending the request
-        user_b_fid: targetFid,     // Person receiving the request
-        created_by_fid: requesterFid,
-        created_by: 'user', // Manual match from user
-        status: 'proposed',
-        message: message,
-        rationale: {
-          score: 0,
-          manualMatch: true,
-          requestedBy: requesterFid,
-          introductionMessage: message,
-        },
-        a_accepted: false, // Requester hasn't "accepted" yet (they initiated)
-        b_accepted: false, // Target hasn't accepted yet
-      })
+      .insert(matchData)
       .select()
       .single();
 
@@ -161,6 +204,24 @@ export async function POST(request: NextRequest) {
       // Don't fail the request if message creation fails
     }
 
+    // For external users, send Farcaster notification
+    if (isExternalUser && externalUserData) {
+      console.log('[API] Sending Farcaster notification to external user...');
+      console.log('[API] Target:', externalUserData.username, `(FID: ${targetFid})`);
+
+      const notificationResult = await sendMatchRequestNotification(
+        externalUserData,
+        match.id
+      );
+
+      if (notificationResult.success) {
+        console.log('[API] ✅ Notification sent successfully, cast hash:', notificationResult.castHash);
+      } else {
+        console.warn('[API] ⚠️ Failed to send notification:', notificationResult.error);
+        // Don't fail the match creation if notification fails - it's a best-effort delivery
+      }
+    }
+
     // Check and award match request achievements
     try {
       const achievementsAwarded = await checkMatchRequestAchievements(requesterFid);
@@ -184,7 +245,15 @@ export async function POST(request: NextRequest) {
       .eq('id', match.id)
       .single();
 
-    return NextResponse.json({ match: matchDetails }, { status: 201 });
+    const response: any = { match: matchDetails };
+
+    // Add info message for external users
+    if (isExternalUser) {
+      response.isExternalUser = true;
+      response.message = `Match request sent! ${externalUserData?.display_name || 'This user'} will be notified to join MeetShipper to respond.`;
+    }
+
+    return NextResponse.json(response, { status: 201 });
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error('[API] Create manual match error:', errorMessage);

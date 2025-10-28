@@ -9,7 +9,6 @@ import Link from 'next/link';
 import { apiClient } from '@/lib/api-client';
 import { getTraitColor, type Trait } from '@/lib/constants/traits';
 import { LevelProgress } from '@/components/dashboard/LevelProgress';
-import { FarcasterFollowing } from '@/components/dashboard/FarcasterFollowing';
 import { useAttestationStatus } from '@/lib/hooks/useAttestationStatus';
 import VerifiedInsights from '@/components/dashboard/VerifiedInsights';
 import GrowthDashboard from '@/components/dashboard/GrowthDashboard';
@@ -344,11 +343,6 @@ export default function Dashboard() {
           <div>
             <AchievementsSummary />
           </div>
-        </div>
-
-        {/* Farcaster Following Section */}
-        <div className="mb-8">
-          <FarcasterFollowing />
         </div>
 
         {/* Verification Prompt - Show if user is not verified */}
