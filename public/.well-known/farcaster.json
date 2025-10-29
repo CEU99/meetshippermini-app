@@ -1,25 +1,25 @@
 {
   "version": "1.0.0",
   "accountAssociation": {
-    "header": "eyJmaWQiOjU0MzU4MSwidHlwZSI6ImN1c3RvZHkiLCJrZXkiOiIweDI0Mjc1NjJGYzY2RGNBNDJCNkYxZjM5NDhEMTFhOGNkNjMzZUUzMmUifQ",
-    "payload": "eyJkb21haW4iOiJtZWV0c2hpcHBlci5jb20ifQ",
+    "header": "eyJmaWQiOjU0MzU0MSwidHlwZSI6ImN1c3RvZHkiLCJrZXkiOiIweDI0Mjc1NjJGYzY2RGNBNDJCNkYxZjM5NDhEMTFhOGNkNjMzZUUzMmUifQ",
+    "payload": "eyJkb21haW4iOiJ3d3cubWVldHNoaXBwZXIuY29tIn0",
     "signature": "LqhFi+R/+5D2iTOl1GAQEtNw4PyW0rQg+y6/X3lr4lBHNBP3hOLPqT4KNA4keA/ohd6QF7p1FaJLAZQvHKnnfxs="
   },
   "miniApp": {
     "name": "MeetShipper",
     "version": "1.0.0",
     "description": "MeetShipper helps Farcaster users connect, verify, and build meaningful on-chain relationships. Built on Base by ULU.",
-    "homeUrl": "https://meetshipper.com",
-    "iconUrl": "https://meetshipper.com/icon.png",
-    "imageUrl": "https://meetshipper.com/cover.png",
-    "splashImageUrl": "https://meetshipper.com/cover.png",
+    "homeUrl": "https://www.meetshipper.com",
+    "iconUrl": "https://www.meetshipper.com/icon.png",
+    "imageUrl": "https://www.meetshipper.com/cover.png",
+    "splashImageUrl": "https://www.meetshipper.com/cover.png",
     "buttonLabel": "Launch MeetShipper",
     "theme": {
       "primaryColor": "#4F46E5",
       "backgroundColor": "#1E1B4B"
     },
     "frame": {
-      "url": "https://meetshipper.com/api/frame"
+      "url": "https://www.meetshipper.com/api/frame"
     },
     "creator": {
       "fid": "543541"
