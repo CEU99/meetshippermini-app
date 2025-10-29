@@ -13,16 +13,79 @@ import { sendExternalSuggestionNotification } from '@/lib/services/farcaster-not
  */
 export async function POST(request: NextRequest) {
   try {
-    const session = await getSession();
+    // Support both session-based auth (cookies) and API key auth (Bearer token)
+    const authHeader = request.headers.get('authorization');
+    const apiKey = process.env.NEYNAR_API_KEY;
+
+    let session = await getSession();
+    let isApiKeyAuth = false;
+
+    // If no session, check for API key authentication
+    if (!session && authHeader) {
+      console.log('[API] 🔹 AUTH HEADER:', authHeader ? `Bearer ${authHeader.substring(7, 27)}...` : 'None');
+      console.log('[API] 🔹 ENV KEY:', apiKey ? `${apiKey.substring(0, 20)}...` : 'None');
+      console.log('[API] 🔹 NODE_ENV:', process.env.NODE_ENV);
+      console.log('[API] 🔹 VERCEL_ENV:', process.env.VERCEL_ENV);
+
+      if (!apiKey) {
+        console.error('[API] ❌ NEYNAR_API_KEY environment variable is NOT loaded');
+        console.error('[API]    → Add NEYNAR_API_KEY to Vercel Dashboard → Settings → Environment Variables (Production scope)');
+        return NextResponse.json({
+          error: 'Unauthorized - Server configuration error',
+          message: 'NEYNAR_API_KEY environment variable is not configured',
+          help: 'Contact the administrator to configure the API key in Vercel',
+        }, { status: 500 });
+      }
+
+      if (authHeader.startsWith('Bearer ')) {
+        const providedKey = authHeader.substring(7); // Remove 'Bearer ' prefix
+
+        if (providedKey === apiKey) {
+          console.log('[API] ✅ API key authentication successful');
+          isApiKeyAuth = true;
+          // Create a pseudo-session for API key requests
+          // You'll need to provide a valid FID and username for the API caller
+          session = {
+            fid: 1, // Default system FID - update this to match your system user
+            username: 'meetshipper-bot', // Default system username
+            expiresAt: Date.now() + 3600000, // 1 hour
+          };
+        } else {
+          console.error('[API] ❌ Invalid API key - key mismatch');
+          console.error('[API]    Provided key length:', providedKey.length);
+          console.error('[API]    Expected key length:', apiKey.length);
+          return NextResponse.json({
+            error: 'Unauthorized - Invalid API key',
+            message: 'The provided API key does not match the server configuration',
+            help: 'Verify your API key matches the one configured in Vercel',
+          }, { status: 401 });
+        }
+      } else {
+        console.error('[API] ❌ Invalid Authorization header format');
+        return NextResponse.json({
+          error: 'Unauthorized - Invalid authorization format',
+          message: 'Authorization header must start with "Bearer " (with space)',
+          help: 'Use: -H "Authorization: Bearer YOUR_API_KEY"',
+        }, { status: 401 });
+      }
+    }
+
     if (!session) {
-      console.error('[API] External Suggestions: No session found');
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      console.error('[API] ❌ No session or valid API key found');
+      console.error('[API]    Session auth: No cookie found');
+      console.error('[API]    API key auth: No Authorization header provided');
+      return NextResponse.json({
+        error: 'Unauthorized',
+        message: 'No valid authentication provided',
+        help: 'Either login to get a session cookie, or provide: -H "Authorization: Bearer YOUR_API_KEY"',
+      }, { status: 401 });
     }
 
     const body = await request.json();
     const { userAFid, userBFid, reason } = body;
 
     console.log('[API] Creating external match suggestion:', {
+      authMethod: isApiKeyAuth ? 'API Key' : 'Session',
       suggesterFid: session.fid,
       suggesterUsername: session.username,
       userAFid,
