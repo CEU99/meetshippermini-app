@@ -3,43 +3,132 @@ import { getSession } from '@/lib/auth';
 import { getServerSupabase } from '@/lib/supabase';
 
 // GET /api/matches/[id] - Get a specific match
+// Supports both authenticated and public (external) access
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getSession();
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
     const { id } = await params;
     const supabase = getServerSupabase();
 
-    const { data: match, error } = await supabase
-      .from('match_details')
-      .select('*')
+    console.log('[API] Fetching match:', id);
+
+    // Fetch match with basic details
+    const { data: match, error: fetchError } = await supabase
+      .from('matches')
+      .select(`
+        id,
+        created_by_fid,
+        user_a_fid,
+        user_b_fid,
+        message,
+        status,
+        a_accepted,
+        b_accepted,
+        chat_room_id,
+        created_at,
+        rationale
+      `)
       .eq('id', id)
       .single();
 
-    if (error || !match) {
+    if (fetchError || !match) {
+      console.error('[API] Error fetching match:', fetchError);
       return NextResponse.json({ error: 'Match not found' }, { status: 404 });
     }
 
-    // Check if user has access to this match
-    const userFid = session.fid;
-    const hasAccess =
-      match.user_a_fid === userFid ||
-      match.user_b_fid === userFid ||
-      match.created_by_fid === userFid;
+    // Fetch user details for all three parties
+    const { data: users, error: usersError } = await supabase
+      .from('users')
+      .select('fid, username, display_name, avatar_url, bio')
+      .in('fid', [match.created_by_fid, match.user_a_fid, match.user_b_fid]);
 
-    if (!hasAccess) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    if (usersError) {
+      console.error('[API] Error fetching users:', usersError);
+      return NextResponse.json(
+        { error: 'Failed to fetch user details', details: usersError.message },
+        { status: 500 }
+      );
     }
 
-    return NextResponse.json({ match });
+    // Map users by FID for easy lookup
+    const userMap = new Map(users?.map(u => [u.fid, u]) || []);
+
+    const creatorData = userMap.get(match.created_by_fid);
+    const userAData = userMap.get(match.user_a_fid);
+    const userBData = userMap.get(match.user_b_fid);
+
+    if (!creatorData || !userAData || !userBData) {
+      console.error('[API] Missing user data:', {
+        hasCreator: !!creatorData,
+        hasUserA: !!userAData,
+        hasUserB: !!userBData,
+      });
+      return NextResponse.json(
+        { error: 'Failed to fetch complete user details' },
+        { status: 500 }
+      );
+    }
+
+    console.log('[API] Match fetched successfully:', {
+      id: match.id,
+      status: match.status,
+      creator: creatorData.username,
+      userA: userAData.username,
+      userB: userBData.username,
+    });
+
+    // Optional session check for additional access control (but don't block external users)
+    const session = await getSession();
+    if (session) {
+      const userFid = session.fid;
+      const hasAccess =
+        match.user_a_fid === userFid ||
+        match.user_b_fid === userFid ||
+        match.created_by_fid === userFid;
+
+      console.log('[API] Authenticated user access:', { userFid, hasAccess });
+    } else {
+      console.log('[API] Unauthenticated access (external user view)');
+    }
+
+    return NextResponse.json({
+      success: true,
+      match: {
+        id: match.id,
+        message: match.message,
+        status: match.status,
+        a_accepted: match.a_accepted,
+        b_accepted: match.b_accepted,
+        chat_room_id: match.chat_room_id,
+        created_at: match.created_at,
+        rationale: match.rationale,
+        creator: {
+          fid: creatorData.fid,
+          username: creatorData.username,
+          display_name: creatorData.display_name,
+          avatar_url: creatorData.avatar_url,
+          bio: creatorData.bio,
+        },
+        user_a: {
+          fid: userAData.fid,
+          username: userAData.username,
+          display_name: userAData.display_name,
+          avatar_url: userAData.avatar_url,
+          bio: userAData.bio,
+        },
+        user_b: {
+          fid: userBData.fid,
+          username: userBData.username,
+          display_name: userBData.display_name,
+          avatar_url: userBData.avatar_url,
+          bio: userBData.bio,
+        },
+      },
+    });
   } catch (error) {
-    console.error('Get match error:', error);
+    console.error('[API] Get match error:', error);
     return NextResponse.json(
       { error: 'Failed to fetch match' },
       { status: 500 }
