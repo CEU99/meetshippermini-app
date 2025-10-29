@@ -34,9 +34,9 @@ export function Navigation() {
   return (
     <nav className="backdrop-blur-md bg-white/50 dark:bg-slate-900/50 border-b border-white/20 shadow-sm shadow-purple-100/30 sticky top-0 z-50 animate-fade-in rounded-b-2xl transition-all duration-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-12">
+        <div className="flex justify-between items-center h-11 md:h-12">
           {/* Left: Logo */}
-          <div className="flex items-center gap-4 md:gap-6">
+          <div className="flex items-center gap-3 md:gap-4">
             <Link href="/dashboard" className="flex items-center group">
               <span className="text-lg md:text-xl font-semibold bg-gradient-to-r from-purple-500 via-pink-500 to-blue-500 bg-clip-text text-transparent animate-gradient-x opacity-90">
                 Meet Shipper
@@ -44,17 +44,17 @@ export function Navigation() {
             </Link>
 
             {/* Desktop Navigation Links - Hidden on mobile */}
-            <div className="hidden lg:flex items-center gap-1">
+            <div className="hidden lg:flex items-center gap-0.5">
               {navItems.map((item) => {
                 const isActive = pathname === item.href;
                 return (
                   <Link
                     key={item.href}
                     href={item.href}
-                    className={`relative px-2.5 md:px-3 py-1.5 text-xs sm:text-sm md:text-[15px] font-medium tracking-wide rounded-full transition-all duration-300 ${
+                    className={`relative px-2 md:px-3 py-1 text-[12px] sm:text-[13px] md:text-[14px] font-normal tracking-wide rounded-full transition-all duration-300 ${
                       isActive
-                        ? 'bg-gradient-to-r from-purple-500 to-blue-500 text-white shadow-md text-sm'
-                        : 'text-gray-700 dark:text-gray-200 hover:text-purple-500 hover:bg-gray-50/50 hover:scale-105'
+                        ? 'bg-gradient-to-r from-purple-500 to-blue-500 text-white shadow-md px-2.5 py-0.5 text-[13px]'
+                        : 'text-gray-600 dark:text-gray-300 hover:text-purple-500 hover:bg-gray-50/50 hover:scale-105'
                     }`}
                   >
                     {item.label}
