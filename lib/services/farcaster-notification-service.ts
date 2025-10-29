@@ -159,7 +159,7 @@ export async function sendMatchRequestNotification(
       console.log('[Notification] No delegated signer provided - using global signer');
     }
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://meetshipper.com';
+    const appUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://www.meetshipper.com';
     const joinUrl = `${appUrl}/join?ref=match-${matchId}`;
 
     // Construct the message
@@ -395,7 +395,7 @@ export async function sendExternalSuggestionNotification(
       console.log('[Notification] No delegated signer provided - using global signer');
     }
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://meetshipper.com';
+    const appUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://www.meetshipper.com';
     const suggestionUrl = `${appUrl}/suggestion/${suggestionId}`;
 
     // Construct the message mentioning both users

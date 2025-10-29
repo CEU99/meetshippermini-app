@@ -21,8 +21,12 @@ function AuthKitWrapper({ children }: { children: ReactNode }) {
   const config = {
     relay: 'https://relay.farcaster.xyz',
     rpcUrl: process.env.NEXT_PUBLIC_RPC_URL || 'https://mainnet.optimism.io',
-    domain: typeof window !== 'undefined' ? window.location.host : 'localhost:3000',
-    siweUri: typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000',
+    domain: typeof window !== 'undefined'
+      ? window.location.host
+      : (process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000').replace(/^https?:\/\//, ''),
+    siweUri: typeof window !== 'undefined'
+      ? window.location.origin
+      : (process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'),
   };
 
   return (

@@ -2,9 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 
 // === CONFIGURATION ===
 const BASE_URL =
-  process.env.NODE_ENV === 'production'
-    ? 'https://meetshipper.com'
-    : 'http://localhost:3000';
+  process.env.NEXT_PUBLIC_BASE_URL ||
+  process.env.NEXT_PUBLIC_APP_URL ||
+  (process.env.NODE_ENV === 'production'
+    ? 'https://www.meetshipper.com'
+    : 'http://localhost:3000');
 
 const FRAME_IMAGE = `${BASE_URL}/cover.png`;
 
