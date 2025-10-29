@@ -102,10 +102,15 @@ export default function ChatRoomPage({
       }
 
       // Get current user FID from session
-      const sessionResponse = await fetch('/api/dev/session');
+      const sessionResponse = await fetch(
+        process.env.NODE_ENV === 'development' ? '/api/dev/session' : '/api/auth/me',
+        { credentials: 'include' }
+      );
       if (sessionResponse.ok) {
         const sessionData = await sessionResponse.json();
-        setCurrentUserFid(sessionData.fid);
+        setCurrentUserFid(
+          process.env.NODE_ENV === 'development' ? sessionData.fid : sessionData.user?.fid
+        );
       }
 
       setLoading(false);
@@ -168,26 +173,46 @@ export default function ChatRoomPage({
   // Send message
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newMessage.trim() || sending) return;
+    if (!newMessage.trim() || sending || !currentUserFid) return;
 
+    const messageBody = newMessage.trim();
     setSending(true);
+    setNewMessage('');
+
+    // Optimistic UI: Add message immediately to local state
+    const optimisticMessage: ChatMessage = {
+      id: `temp-${Date.now()}`,
+      room_id: roomId,
+      sender_fid: currentUserFid,
+      body: messageBody,
+      created_at: new Date().toISOString(),
+    };
+    setMessages((prev) => [...prev, optimisticMessage]);
+
     try {
       const response = await fetch(`/api/chat/rooms/${roomId}/message`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ body: newMessage.trim() }),
+        body: JSON.stringify({ body: messageBody }),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
+        // Remove optimistic message on error
+        setMessages((prev) => prev.filter((msg) => msg.id !== optimisticMessage.id));
         throw new Error(data.error || 'Failed to send message');
       }
 
-      setNewMessage('');
+      // Replace optimistic message with real message from server
+      setMessages((prev) =>
+        prev.map((msg) => (msg.id === optimisticMessage.id ? data.data : msg))
+      );
     } catch (err: any) {
       console.error('Error sending message:', err);
       alert(err.message || 'Failed to send message');
+      // Restore message text so user can retry
+      setNewMessage(messageBody);
     } finally {
       setSending(false);
     }
@@ -209,14 +234,14 @@ export default function ChatRoomPage({
         throw new Error(data.error || 'Failed to mark as complete');
       }
 
+      // Show success message
       alert(data.data.message);
 
-      // Refresh room data
-      await fetchRoom();
+      // Navigate back to inbox (don't touch session or auth state)
+      router.push('/mini/inbox');
     } catch (err: any) {
       console.error('Error marking complete:', err);
       alert(err.message || 'Failed to mark as complete');
-    } finally {
       setIsCompleting(false);
     }
   };
@@ -421,12 +446,12 @@ export default function ChatRoomPage({
             placeholder={room.is_closed ? 'Chat is closed' : 'Type your message...'}
             disabled={room.is_closed || sending}
             maxLength={2000}
-            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 disabled:bg-gray-100 disabled:cursor-not-allowed"
+            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-500 bg-white focus:outline-none focus:ring-2 focus:ring-purple-400 disabled:bg-gray-100 disabled:cursor-not-allowed"
           />
           <button
             type="submit"
             disabled={room.is_closed || sending || !newMessage.trim()}
-            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-6 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
           >
             {sending ? 'Sending...' : 'Send'}
           </button>

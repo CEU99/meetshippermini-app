@@ -47,7 +47,36 @@ function FarcasterAuthProviderInner({ children }: { children: ReactNode }) {
       setLoading(true);
 
       try {
-        // PRIORITY 1: Check for dev session (bypasses Farcaster in development)
+        // PRIORITY 1: Check for existing JWT session (persists across page refreshes)
+        try {
+          const sessionResponse = await fetch('/api/auth/me', {
+            credentials: 'include',
+          });
+
+          if (sessionResponse.ok) {
+            const sessionData = await sessionResponse.json();
+            if (sessionData.user) {
+              console.log('[Auth] ✅ Restored session from JWT cookie:', sessionData.user.username);
+
+              const restoredUser: FarcasterUser = {
+                fid: sessionData.user.fid,
+                username: sessionData.user.username,
+                displayName: sessionData.user.displayName || sessionData.user.username,
+                pfpUrl: sessionData.user.avatarUrl || `https://avatar.vercel.sh/${sessionData.user.username}`,
+                bio: '',
+                userCode: sessionData.user.userCode,
+              };
+
+              setUser(restoredUser);
+              setLoading(false);
+              return; // Exit early - JWT session takes priority
+            }
+          }
+        } catch (err) {
+          console.log('[Auth] No existing JWT session found, checking other auth methods');
+        }
+
+        // PRIORITY 2: Check for dev session (bypasses Farcaster in development)
         if (process.env.NODE_ENV === 'development') {
           try {
             const devResponse = await apiClient.get<{
@@ -82,7 +111,7 @@ function FarcasterAuthProviderInner({ children }: { children: ReactNode }) {
           }
         }
 
-        // PRIORITY 2: Use Farcaster Auth Kit
+        // PRIORITY 3: Use Farcaster Auth Kit
         if (isAuthenticated && profile) {
           console.log('[Auth] ✅ Farcaster profile found:', profile);
 

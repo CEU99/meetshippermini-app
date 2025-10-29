@@ -26,13 +26,23 @@ export async function createSession(userData: Omit<SessionData, 'expiresAt'>) {
     .sign(JWT_SECRET);
 
   const cookieStore = await cookies();
-  cookieStore.set('session', token, {
+
+  // Cookie configuration for production stability
+  const cookieOptions: any = {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
     maxAge: SESSION_DURATION / 1000,
     path: '/',
-  });
+  };
+
+  // In production, ensure cookie works across all paths
+  if (process.env.NODE_ENV === 'production') {
+    // Don't set domain - let browser handle it automatically for better compatibility
+    console.log('[Auth] Setting production session cookie');
+  }
+
+  cookieStore.set('session', token, cookieOptions);
 
   return token;
 }
