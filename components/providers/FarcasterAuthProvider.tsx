@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useState, ReactNode } from 'react
 import { AuthKitProvider, useProfile } from '@farcaster/auth-kit';
 import type { FarcasterUser } from '@/lib/types';
 import { apiClient } from '@/lib/api-client';
+import { initializeDelegatedSigner } from '@/lib/utils/delegated-signer';
 
 interface FarcasterAuthContextType {
   user: FarcasterUser | null;
@@ -114,6 +115,21 @@ function FarcasterAuthProviderInner({ children }: { children: ReactNode }) {
 
             setUser(farcasterUser);
             console.log('[Auth] ✅ User authenticated:', farcasterUser);
+
+            // Initialize delegated signer for Farcaster messaging
+            // This runs in the background and doesn't block authentication
+            initializeDelegatedSigner()
+              .then((result) => {
+                if (result.success) {
+                  console.log('[Auth] ✅ Delegated signer initialized:', result.cached ? 'cached' : 'new');
+                } else {
+                  console.warn('[Auth] ⚠️ Failed to initialize delegated signer:', result.error);
+                  // Don't fail auth if signer init fails - it's optional
+                }
+              })
+              .catch((error) => {
+                console.error('[Auth] Error initializing delegated signer:', error);
+              });
           } catch (error) {
             console.error('[Auth] Failed to create session:', error);
             setUser(farcasterUser); // Set user anyway, even if session creation failed

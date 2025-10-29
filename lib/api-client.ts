@@ -20,7 +20,6 @@ export async function apiFetch<T = unknown>(
 
     // Check if response is ok (status 200-299)
     if (!response.ok) {
-      // Try to parse error as JSON
       let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
       let errorData;
 
@@ -30,15 +29,13 @@ export async function apiFetch<T = unknown>(
           errorData = await response.json();
           errorMessage = errorData.error || errorMessage;
         } else {
-          // If not JSON, get text
           const text = await response.text();
           errorMessage = text || errorMessage;
         }
       } catch {
-        // Failed to parse error response, use default message
+        // ignore parsing errors
       }
 
-      // Return null for 404 errors or "User not found" instead of throwing
       if (response.status === 404 || errorMessage.toLowerCase().includes('user not found')) {
         console.log(`[API] User not found (404): ${url}`);
         return null;
@@ -47,7 +44,6 @@ export async function apiFetch<T = unknown>(
       throw new ApiError(response.status, errorMessage, errorData);
     }
 
-    // Check if response is JSON
     const contentType = response.headers.get('content-type');
     if (!contentType || !contentType.includes('application/json')) {
       throw new ApiError(
@@ -57,21 +53,15 @@ export async function apiFetch<T = unknown>(
       );
     }
 
-    // Parse and return JSON
     const data = await response.json();
     return data as T;
   } catch (error) {
-    // Re-throw ApiError as-is
-    if (error instanceof ApiError) {
-      throw error;
-    }
+    if (error instanceof ApiError) throw error;
 
-    // Handle network errors
     if (error instanceof TypeError && error.message.includes('fetch')) {
       throw new ApiError(0, 'Network error. Please check your connection.');
     }
 
-    // Handle JSON parse errors
     if (error instanceof SyntaxError) {
       throw new ApiError(
         500,
@@ -79,7 +69,6 @@ export async function apiFetch<T = unknown>(
       );
     }
 
-    // Unknown error
     throw new ApiError(
       500,
       error instanceof Error ? error.message : 'An unknown error occurred'
@@ -122,5 +111,27 @@ export async function declineAllMatch(matchId: string): Promise<{
   message?: string;
   match?: unknown;
 }> {
-  return apiClient.post(`/api/matches/${matchId}/decline-all`);
+  const response = await apiClient.post<{
+    success: boolean;
+    reason?: string;
+    message?: string;
+    match?: unknown;
+  }>(`/api/matches/${matchId}/decline-all`);
+
+  if (!response) {
+    return {
+      success: false,
+      reason: 'No response from API',
+      message: 'Server returned null',
+      match: null,
+    };
+  }
+
+  // ensure required field exists even if server forgets to include it
+  return {
+    success: (response as any).success ?? true,
+    reason: (response as any).reason,
+    message: (response as any).message,
+    match: (response as any).match,
+  };
 }

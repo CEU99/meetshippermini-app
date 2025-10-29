@@ -48,7 +48,13 @@
       "Bash(xargs kill:*)",
       "Bash(pnpm install)",
       "Bash(git push:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(source .env.local)",
+      "Bash(then echo \"DATABASE_URL not found in env, checking .env.local...\")",
+      "Bash(then source .env.local)",
+      "Bash(else echo \"No .env.local file\")",
+      "Bash(then echo \"ERROR: DATABASE_URL not set\")",
+      "Bash(else echo \"DATABASE_URL is set\")"
     ],
     "deny": [],
     "ask": []

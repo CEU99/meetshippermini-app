@@ -192,13 +192,51 @@ class NeynarAPI {
     }
   }
 
+  /**
+   * Check the status of a signer
+   * Returns signer details including approval status
+   */
+  async checkSignerStatus(signerUuid: string): Promise<{
+    success: boolean;
+    status?: 'generated' | 'pending_approval' | 'approved' | 'revoked';
+    publicKey?: string;
+    fid?: number;
+    error?: string;
+  }> {
+    try {
+      console.log('[Neynar] Checking signer status:', signerUuid);
+
+      const response = await this.fetch(`/farcaster/signer?signer_uuid=${signerUuid}`, {
+        method: 'GET',
+      });
+
+      console.log('[Neynar] Signer status retrieved:', response.status);
+
+      return {
+        success: true,
+        status: response.status,
+        publicKey: response.public_key,
+        fid: response.fid,
+      };
+    } catch (error) {
+      console.error('[Neynar] Error checking signer status:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to check signer status',
+      };
+    }
+  }
+
   // Send a direct cast (requires signer UUID)
+  // Returns: { success: true, cast: <Neynar response with nested cast.hash> }
   async sendDirectCast(params: {
     signerUuid: string;
     text: string;
     recipientFid: number;
   }): Promise<{ success: boolean; cast?: any; error?: string }> {
     try {
+      console.log('[Neynar] Sending direct cast to FID:', params.recipientFid);
+
       const response = await this.fetch('/farcaster/cast', {
         method: 'POST',
         body: JSON.stringify({
@@ -210,9 +248,11 @@ class NeynarAPI {
         }),
       });
 
+      console.log('[Neynar] Direct cast sent successfully');
+      // Note: Neynar response structure is { cast: { hash: "...", ... } }
       return { success: true, cast: response };
     } catch (error) {
-      console.error('Error sending direct cast:', error);
+      console.error('[Neynar] Error sending direct cast:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Failed to send direct cast',
@@ -221,24 +261,38 @@ class NeynarAPI {
   }
 
   // Publish a cast (public post)
+  // Returns: { success: true, cast: <Neynar response with nested cast.hash> }
   async publishCast(params: {
     signerUuid: string;
     text: string;
     embeds?: Array<{ url: string }>;
+    mentions?: number[]; // FIDs to mention
   }): Promise<{ success: boolean; cast?: any; error?: string }> {
     try {
+      console.log('[Neynar] Publishing cast:', { text: params.text.substring(0, 50) + '...' });
+
+      const body: any = {
+        signer_uuid: params.signerUuid,
+        text: params.text,
+        embeds: params.embeds || [],
+      };
+
+      // Add mentions if provided
+      if (params.mentions && params.mentions.length > 0) {
+        body.mentions = params.mentions;
+        console.log('[Neynar] Including mentions:', params.mentions);
+      }
+
       const response = await this.fetch('/farcaster/cast', {
         method: 'POST',
-        body: JSON.stringify({
-          signer_uuid: params.signerUuid,
-          text: params.text,
-          embeds: params.embeds || [],
-        }),
+        body: JSON.stringify(body),
       });
 
+      console.log('[Neynar] Cast published successfully');
+      // Note: Neynar response structure is { cast: { hash: "...", ... } }
       return { success: true, cast: response };
     } catch (error) {
-      console.error('Error publishing cast:', error);
+      console.error('[Neynar] Error publishing cast:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Failed to publish cast',

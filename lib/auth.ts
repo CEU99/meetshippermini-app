@@ -11,6 +11,7 @@ export interface SessionData {
   displayName?: string;
   avatarUrl?: string;
   userCode?: string | null;
+  signerUuid?: string | null; // Neynar delegated signer UUID
   expiresAt: number;
 }
 
@@ -72,4 +73,73 @@ export async function requireAuth(): Promise<SessionData> {
   }
 
   return session;
+}
+
+/**
+ * Update session with delegated signer UUID
+ * This allows adding a signer to an existing session without recreating it
+ */
+export async function updateSessionSigner(signerUuid: string): Promise<void> {
+  const session = await getSession();
+
+  if (!session) {
+    throw new Error('No active session');
+  }
+
+  // Create new session with updated signer
+  await createSession({
+    fid: session.fid,
+    username: session.username,
+    displayName: session.displayName,
+    avatarUrl: session.avatarUrl,
+    userCode: session.userCode,
+    signerUuid: signerUuid,
+  });
+}
+
+/**
+ * Get or create delegated signer for the current session
+ */
+export async function ensureDelegatedSigner(): Promise<string | null> {
+  const session = await getSession();
+
+  if (!session) {
+    return null;
+  }
+
+  // If session already has a signer, return it
+  if (session.signerUuid) {
+    console.log('[Auth] Using existing delegated signer from session');
+    return session.signerUuid;
+  }
+
+  try {
+    // Request new delegated signer
+    console.log('[Auth] Requesting new delegated signer for FID:', session.fid);
+
+    const response = await fetch('/api/neynar/delegate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fid: session.fid }),
+    });
+
+    if (!response.ok) {
+      console.error('[Auth] Failed to get delegated signer:', response.status);
+      return null;
+    }
+
+    const data = await response.json();
+
+    if (data.signerUuid) {
+      // Update session with new signer
+      await updateSessionSigner(data.signerUuid);
+      console.log('[Auth] ✅ Delegated signer created and stored in session');
+      return data.signerUuid;
+    }
+
+    return null;
+  } catch (error) {
+    console.error('[Auth] Error ensuring delegated signer:', error);
+    return null;
+  }
 }

@@ -35,6 +35,7 @@ export async function GET(request: NextRequest) {
       query = query.in('status', [
         'proposed',
         'pending',
+        'pending_external',
         'accepted_by_a',
         'accepted_by_b',
         'accepted',
@@ -49,7 +50,7 @@ export async function GET(request: NextRequest) {
 
       query = query
         .or(pendingConditions.join(','))
-        .in('status', ['proposed', 'pending', 'accepted_by_a', 'accepted_by_b']);
+        .in('status', ['proposed', 'pending', 'pending_external', 'accepted_by_a', 'accepted_by_b']);
 
     } else if (scope === 'awaiting') {
       // I accepted, waiting for other party - matches where I accepted but they haven't
@@ -60,7 +61,7 @@ export async function GET(request: NextRequest) {
 
       query = query
         .or(awaitingConditions.join(','))
-        .in('status', ['accepted_by_a', 'accepted_by_b', 'proposed', 'pending']);
+        .in('status', ['accepted_by_a', 'accepted_by_b', 'proposed', 'pending', 'pending_external']);
 
     } else if (scope === 'accepted') {
       // Both accepted

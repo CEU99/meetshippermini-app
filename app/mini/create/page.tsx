@@ -6,6 +6,12 @@ import { useFarcasterAuth } from '@/components/providers/FarcasterAuthProvider';
 import { Navigation } from '@/components/shared/Navigation';
 import { apiClient } from '@/lib/api-client';
 import { Avatar } from '@/components/shared/Avatar';
+import { CooldownCard } from '@/components/shared/CooldownCard';
+import {
+  CooldownInfo,
+  extractCooldownInfo,
+  formatCooldownMessage,
+} from '@/lib/utils/cooldown';
 
 interface UserProfile {
   fid: number;
@@ -39,6 +45,7 @@ function CreateMatchContent() {
   const [manualModeActive, setManualModeActive] = useState(false);
   const [farcasterManualModeActive, setFarcasterManualModeActive] = useState(false);
   const [weeklyMatches, setWeeklyMatches] = useState(0);
+  const [cooldownInfo, setCooldownInfo] = useState<CooldownInfo | null>(null);
 
   // Matching mode state
   const [matchWithMeetShipper, setMatchWithMeetShipper] = useState(false);
@@ -369,10 +376,21 @@ function CreateMatchContent() {
       setTimeout(() => {
         router.push('/mini/inbox');
       }, 2000);
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    } catch (error: any) {
       console.error('Error creating match:', error);
-      setError(errorMessage || 'Failed to create match. Please try again.');
+
+      // Extract cooldown info using shared utility
+      const cooldown = extractCooldownInfo(error);
+
+      if (cooldown) {
+        setCooldownInfo(cooldown);
+        setError(formatCooldownMessage(cooldown));
+      } else {
+        setCooldownInfo(null);
+        const errorMessage =
+          error instanceof Error ? error.message : error?.message || 'Unknown error';
+        setError(errorMessage || 'Failed to create match. Please try again.');
+      }
     } finally {
       setSubmitting(false);
     }
@@ -415,8 +433,18 @@ function CreateMatchContent() {
           </div>
 
           {error && (
-            <div className="mb-6 backdrop-blur-xl bg-gradient-to-r from-red-50/80 to-pink-50/80 border border-red-200/60 rounded-xl p-4">
-              <p className="text-red-800 text-sm font-medium">{error}</p>
+            <div className="mb-6">
+              {cooldownInfo ? (
+                <CooldownCard
+                  cooldownInfo={cooldownInfo}
+                  message={error}
+                  context="match"
+                />
+              ) : (
+                <div className="backdrop-blur-xl bg-gradient-to-r from-red-50/80 to-pink-50/80 border border-red-200/60 rounded-xl p-4">
+                  <p className="text-red-800 text-sm font-medium">{error}</p>
+                </div>
+              )}
             </div>
           )}
 

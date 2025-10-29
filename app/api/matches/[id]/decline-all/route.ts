@@ -92,7 +92,7 @@ export async function POST(
         updated_at: new Date().toISOString(),
       })
       .eq('id', matchId)
-      .in('status', ['proposed', 'pending', 'accepted_by_a', 'accepted_by_b'])
+      .in('status', ['proposed', 'pending', 'pending_external', 'accepted_by_a', 'accepted_by_b'])
       .select()
       .single();
 

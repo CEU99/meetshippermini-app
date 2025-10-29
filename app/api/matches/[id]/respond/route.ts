@@ -62,6 +62,10 @@ export async function POST(
       return NextResponse.json({ error: 'Match not found' }, { status: 404 });
     }
 
+    // Check if this is an external match
+    const isExternalMatch = match.status === 'pending_external' ||
+                           (match.rationale && typeof match.rationale === 'object' && 'isExternalUser' in match.rationale && match.rationale.isExternalUser);
+
     console.log('[API] Respond: Match found:', {
       matchId: match.id,
       user_a_fid: match.user_a_fid,
@@ -69,6 +73,7 @@ export async function POST(
       status: match.status,
       a_accepted: match.a_accepted,
       b_accepted: match.b_accepted,
+      isExternalMatch,
     });
 
     // Check if user is a participant
@@ -104,11 +109,16 @@ export async function POST(
     }
 
     // Check if match is still in valid state
-    if (!['proposed', 'accepted_by_a', 'accepted_by_b', 'pending'].includes(match.status)) {
+    if (!['proposed', 'accepted_by_a', 'accepted_by_b', 'pending', 'pending_external'].includes(match.status)) {
+      console.error('[API] Respond: Match status not valid for response:', match.status);
       return NextResponse.json(
         { error: 'This match is no longer active' },
         { status: 400 }
       );
+    }
+
+    if (isExternalMatch) {
+      console.log('[API] Respond: Processing external match response');
     }
 
     // Prepare update
@@ -120,6 +130,25 @@ export async function POST(
       } else {
         updateData.b_accepted = true;
       }
+
+      // For external matches, handle status transition explicitly
+      if (isExternalMatch) {
+        console.log('[API] Respond: External match accepted by', isUserA ? 'user_a' : 'user_b');
+
+        // Check if both will be accepted after this update
+        const willBothAccept = (isUserA && match.b_accepted) || (isUserB && match.a_accepted) ||
+                               (isUserA && updateData.b_accepted) || (isUserB && updateData.a_accepted);
+
+        if (willBothAccept) {
+          // Both accepted - transition to 'accepted'
+          updateData.status = 'accepted';
+          console.log('[API] Respond: External match - both parties accepted, transitioning to "accepted"');
+        } else {
+          // Only one accepted - keep as pending_external or transition to waiting state
+          // For now, keep the status as is to maintain the external flag
+          console.log('[API] Respond: External match - waiting for other party');
+        }
+      }
     } else {
       // Decline
       updateData.status = 'declined';
@@ -128,6 +157,9 @@ export async function POST(
         updateData.message = match.message
           ? `${match.message}\n\nDecline reason: ${reason}`
           : `Decline reason: ${reason}`;
+      }
+      if (isExternalMatch) {
+        console.log('[API] Respond: External match declined by', isUserA ? 'user_a' : 'user_b', reason ? `- Reason: ${reason}` : '');
       }
     }
 
@@ -138,6 +170,12 @@ export async function POST(
       currentStatus: match.status,
       targetStatus: updateData.status || 'unchanged',
       userRole: isUserA ? 'user_a' : 'user_b',
+      isExternalMatch,
+      currentAcceptance: { a_accepted: match.a_accepted, b_accepted: match.b_accepted },
+      newAcceptance: {
+        a_accepted: updateData.a_accepted !== undefined ? updateData.a_accepted : match.a_accepted,
+        b_accepted: updateData.b_accepted !== undefined ? updateData.b_accepted : match.b_accepted,
+      },
     });
 
     const { data: updatedMatch, error: updateError } = await supabase

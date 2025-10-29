@@ -34,7 +34,7 @@ interface Match {
   creator_username: string;
   creator_display_name: string;
   creator_avatar_url: string;
-  status: 'proposed' | 'pending' | 'accepted_by_a' | 'accepted_by_b' | 'accepted' | 'declined' | 'cancelled' | 'completed';
+  status: 'proposed' | 'pending' | 'pending_external' | 'accepted_by_a' | 'accepted_by_b' | 'accepted' | 'declined' | 'cancelled' | 'completed';
   message?: string;
   rationale?: MatchRationale;
   a_accepted: boolean;
@@ -441,6 +441,7 @@ export default function Inbox() {
         return 'bg-gradient-to-r from-green-50/90 to-emerald-50/90 text-green-800 border-green-200';
       case 'proposed':
       case 'pending':
+      case 'pending_external':
         return 'bg-gradient-to-r from-yellow-50/90 to-amber-50/90 text-yellow-800 border-yellow-200';
       case 'accepted_by_a':
       case 'accepted_by_b':
@@ -460,6 +461,7 @@ export default function Inbox() {
         return '✅';
       case 'proposed':
       case 'pending':
+      case 'pending_external':
         return '⏳';
       case 'accepted_by_a':
       case 'accepted_by_b':

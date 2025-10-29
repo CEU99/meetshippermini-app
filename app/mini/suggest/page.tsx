@@ -8,6 +8,12 @@ import { useFarcasterAuth } from '@/components/providers/FarcasterAuthProvider';
 import { Navigation } from '@/components/shared/Navigation';
 import { UserLookup, UserProfile } from '@/components/shared/UserLookup';
 import { apiClient } from '@/lib/api-client';
+import { CooldownCard } from '@/components/shared/CooldownCard';
+import {
+  CooldownInfo,
+  extractCooldownInfo,
+  formatCooldownMessage,
+} from '@/lib/utils/cooldown';
 import {
   getSuggestDraft,
   setSuggestDraft,
@@ -28,6 +34,7 @@ function SuggestMatchContent() {
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [cooldownInfo, setCooldownInfo] = useState<CooldownInfo | null>(null);
   const [initialized, setInitialized] = useState(false);
 
   // Matching mode state
@@ -410,22 +417,69 @@ function SuggestMatchContent() {
     setLoading(true);
 
     try {
-      const response = await apiClient.post<{ success: boolean }>('/api/matches/suggestions', {
-        userAFid: activeUserA.fid,
-        userBFid: activeUserB.fid,
-        message: message.trim(),
+      // Determine endpoint based on mode
+      const endpoint = matchWithFarcaster ? '/api/suggestions/external' : '/api/matches/suggestions';
+      const requestBody = matchWithFarcaster
+        ? {
+            userAFid: activeUserA.fid,
+            userBFid: activeUserB.fid,
+            reason: message.trim(),
+          }
+        : {
+            userAFid: activeUserA.fid,
+            userBFid: activeUserB.fid,
+            message: message.trim(),
+          };
+
+      console.log('[Frontend] Submitting suggestion:', {
+        mode: matchWithFarcaster ? 'farcaster' : 'meetshipper',
+        endpoint,
+        userA: activeUserA.username,
+        userB: activeUserB.username,
+        reason: message.trim(),
+      });
+
+      const response = await apiClient.post<{ success: boolean; suggestion?: any }>(endpoint, requestBody);
+
+      console.log('[Frontend] Response:', {
+        success: response?.success,
+        suggestionId: response?.suggestion?.id,
       });
 
       if (response?.success) {
         // Clear saved state
         clearSuggestDraft();
 
-        // Success! Redirect to dashboard
-        router.push('/dashboard?suggestion=created');
+        // Show success toast based on mode
+        if (matchWithFarcaster) {
+          toast.success('✅ Suggestion sent to both users via Farcaster!', {
+            duration: 4000,
+            style: {
+              background: '#10B981',
+              color: '#fff',
+              fontWeight: '600',
+            },
+          });
+          // Redirect to your suggestions in inbox
+          router.push('/mini/inbox?tab=your-suggestions');
+        } else {
+          // Success! Redirect to dashboard for MeetShipper mode
+          router.push('/dashboard?suggestion=created');
+        }
       }
     } catch (err: any) {
-      console.error('Error creating suggestion:', err);
-      setError(err.message || 'Failed to create match suggestion');
+      console.error('[Frontend] Error creating suggestion:', err);
+
+      // Extract cooldown info using shared utility
+      const cooldown = extractCooldownInfo(err);
+
+      if (cooldown) {
+        setCooldownInfo(cooldown);
+        setError(formatCooldownMessage(cooldown));
+      } else {
+        setCooldownInfo(null);
+        setError(err.message || 'Failed to create match suggestion');
+      }
     } finally {
       setLoading(false);
     }
@@ -766,21 +820,31 @@ function SuggestMatchContent() {
 
             {/* Error Display */}
             {error && (
-              <div className="backdrop-blur-xl bg-gradient-to-r from-red-50/80 to-pink-50/80 border border-red-200/60 rounded-xl p-4">
-                <div className="flex items-start gap-2">
-                  <svg
-                    className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                  <p className="text-sm text-red-800 font-medium">{error}</p>
-                </div>
+              <div className="mb-4">
+                {cooldownInfo ? (
+                  <CooldownCard
+                    cooldownInfo={cooldownInfo}
+                    message={error}
+                    context="suggestion"
+                  />
+                ) : (
+                  <div className="backdrop-blur-xl bg-gradient-to-r from-red-50/80 to-pink-50/80 border border-red-200/60 rounded-xl p-4">
+                    <div className="flex items-start gap-2">
+                      <svg
+                        className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5"
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                      <p className="text-sm text-red-800 font-medium">{error}</p>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 

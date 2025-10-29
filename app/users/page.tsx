@@ -18,6 +18,7 @@ interface User {
   avatar_url?: string;
   bio?: string;
   user_code?: string;
+  has_joined_meetshipper?: boolean;
   created_at?: string;
   updated_at?: string;
 }
@@ -61,6 +62,8 @@ function UsersPageContent() {
   const sourceParam = searchParams.get('source');
   // Get excludeFid parameter to disable already-selected user
   const excludeFidParam = searchParams.get('excludeFid') ? parseInt(searchParams.get('excludeFid')!) : null;
+  // Get showAll parameter for admin debugging
+  const showAll = searchParams.get('showAll') === 'true';
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -84,7 +87,7 @@ function UsersPageContent() {
     if (isAuthenticated) {
       fetchUsers();
     }
-  }, [isAuthenticated, page, debouncedSearch]);
+  }, [isAuthenticated, page, debouncedSearch, showAll]);
 
   // Realtime subscription for new users
   useEffect(() => {
@@ -143,6 +146,10 @@ function UsersPageContent() {
 
       if (debouncedSearch) {
         params.append('search', debouncedSearch);
+      }
+
+      if (showAll) {
+        params.append('showAll', 'true');
       }
 
       const data = await apiClient.get<UsersResponse>(`/api/users?${params.toString()}`);
@@ -229,6 +236,34 @@ function UsersPageContent() {
                 <p className="text-sm text-white/80 mt-1">
                   Registered MeetShipper community members
                 </p>
+              </div>
+
+              {/* Info Banner */}
+              <div className={`px-6 py-3 border-b ${
+                showAll
+                  ? 'bg-orange-50 border-orange-100'
+                  : 'bg-blue-50 border-blue-100'
+              }`}>
+                <div className="flex items-start gap-2">
+                  <svg
+                    className={`w-4 h-4 flex-shrink-0 mt-0.5 ${
+                      showAll ? 'text-orange-600' : 'text-blue-600'
+                    }`}
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                  <p className={`text-xs ${showAll ? 'text-orange-800' : 'text-blue-800'}`}>
+                    {showAll
+                      ? '🔧 Admin Mode: Showing ALL users (including external Farcaster users). Remove ?showAll=true to see only registered members.'
+                      : 'Showing only registered MeetShipper members. External Farcaster users are excluded.'}
+                  </p>
+                </div>
               </div>
 
               {/* Search Bar */}

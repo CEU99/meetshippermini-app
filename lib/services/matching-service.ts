@@ -168,6 +168,26 @@ export async function isInCooldown(fidA: number, fidB: number): Promise<boolean>
 }
 
 /**
+ * Get cooldown expiry timestamp for two users
+ * Returns null if not in cooldown
+ */
+export async function getCooldownExpiry(fidA: number, fidB: number): Promise<Date | null> {
+  const supabase = getServerSupabase();
+
+  const { data, error } = await supabase.rpc('get_match_cooldown_expiry', {
+    fid_a: fidA,
+    fid_b: fidB,
+  });
+
+  if (error) {
+    console.error('Error getting cooldown expiry:', error);
+    return null;
+  }
+
+  return data ? new Date(data) : null;
+}
+
+/**
  * Check if users already have an open/pending match
  * Only blocks on truly "open" statuses that need action within last 24 hours
  * 'accepted' is considered complete and doesn't block new proposals

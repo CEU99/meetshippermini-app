@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { getServerSupabase } from '@/lib/supabase';
+import { getCooldownExpiry } from '@/lib/services/matching-service';
 
 /**
  * POST /api/matches/suggestions
@@ -102,6 +103,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check cooldown
+    console.log('[API] Checking suggestion cooldown...');
     const { data: cooldownCheck } = await supabase.rpc(
       'check_suggestion_cooldown',
       {
@@ -111,15 +113,41 @@ export async function POST(request: NextRequest) {
     );
 
     if (cooldownCheck === false) {
+      console.log('[API] ❌ Suggestion is in cooldown period');
+
+      // Get cooldown expiry time for user feedback
+      const cooldownExpiry = await getCooldownExpiry(userAFid, userBFid);
+
+      if (cooldownExpiry) {
+        const now = new Date();
+        const hoursRemaining = Math.ceil(
+          (cooldownExpiry.getTime() - now.getTime()) / (1000 * 60 * 60)
+        );
+        const daysRemaining = Math.ceil(hoursRemaining / 24);
+
+        console.log('[API] Cooldown expires at:', cooldownExpiry.toISOString());
+        console.log('[API] Hours remaining:', hoursRemaining);
+
+        return NextResponse.json(
+          {
+            error: 'A suggestion between these users was recently declined.',
+            cooldownExpiry: cooldownExpiry.toISOString(),
+            hoursRemaining,
+            daysRemaining,
+          },
+          { status: 400 }
+        );
+      }
+
+      // Fallback if we can't get expiry time
       return NextResponse.json(
         {
-          error: 'Cooldown active',
-          message:
-            'A suggestion between these users was recently declined. Please wait 7 days before suggesting again.',
+          error: 'A suggestion between these users was recently declined. Please wait before suggesting again.',
         },
-        { status: 429 }
+        { status: 400 }
       );
     }
+    console.log('[API] ✅ No cooldown for suggestion');
 
     // Create the suggestion
     const { data: suggestion, error: createError } = await supabase

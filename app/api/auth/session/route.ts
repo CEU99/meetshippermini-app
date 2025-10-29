@@ -37,6 +37,7 @@ export async function POST(request: NextRequest) {
           display_name: displayName || username,
           avatar_url: pfpUrl || null,
           bio: bio || null,
+          has_joined_meetshipper: true, // User has logged in to MeetShipper
           updated_at: new Date().toISOString(),
         },
         {
