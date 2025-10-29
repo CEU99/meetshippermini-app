@@ -32,35 +32,32 @@ export function Navigation() {
   };
 
   return (
-    <nav className="backdrop-blur-xl bg-white/80 border-b border-white/60 shadow-lg sticky top-0 z-50 animate-fade-in">
+    <nav className="backdrop-blur-md bg-white/50 dark:bg-slate-900/50 border-b border-white/20 shadow-sm shadow-purple-100/30 sticky top-0 z-50 animate-fade-in rounded-b-2xl transition-all duration-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
+        <div className="flex justify-between items-center h-14">
           {/* Left: Logo */}
           <div className="flex items-center gap-8">
             <Link href="/dashboard" className="flex items-center group">
-              <span className="text-xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent transition-all duration-300 group-hover:from-purple-700 group-hover:to-blue-700 group-hover:scale-105">
+              <span className="text-xl font-semibold bg-gradient-to-r from-purple-500 via-pink-500 to-blue-500 bg-clip-text text-transparent animate-gradient-x">
                 Meet Shipper
               </span>
             </Link>
 
             {/* Desktop Navigation Links - Hidden on mobile */}
-            <div className="hidden lg:flex items-center gap-2">
+            <div className="hidden lg:flex items-center gap-1.5">
               {navItems.map((item) => {
                 const isActive = pathname === item.href;
                 return (
                   <Link
                     key={item.href}
                     href={item.href}
-                    className={`relative px-4 py-2 text-sm font-medium rounded-lg transition-all duration-300 ${
+                    className={`relative px-3 py-1.5 text-sm md:text-base font-medium rounded-full transition-all duration-300 ${
                       isActive
-                        ? 'text-purple-600'
+                        ? 'bg-gradient-to-r from-purple-500 to-blue-500 text-white shadow-md'
                         : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50/50 hover:scale-105'
                     }`}
                   >
                     {item.label}
-                    {isActive && (
-                      <span className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-12 h-0.5 bg-gradient-to-r from-purple-600 via-purple-500 to-blue-600 rounded-full animate-slide-in"></span>
-                    )}
                   </Link>
                 );
               })}
@@ -72,17 +69,17 @@ export function Navigation() {
             {user && (
               <>
                 {/* User Profile - Desktop only */}
-                <div className="hidden lg:flex items-center gap-2.5 px-3 py-1.5 rounded-lg backdrop-blur-sm bg-white/50 border border-purple-100/60 hover:bg-purple-50/50 hover:border-purple-200/60 transition-all duration-300 cursor-pointer">
+                <div className="hidden lg:flex items-center gap-2 px-2.5 py-1 rounded-lg backdrop-blur-sm bg-white/50 border border-purple-100/60 hover:bg-purple-50/50 hover:border-purple-200/60 transition-all duration-300 cursor-pointer">
                   {user.pfpUrl && (
                     <Image
                       src={user.pfpUrl}
                       alt={user.username}
-                      width={28}
-                      height={28}
+                      width={24}
+                      height={24}
                       className="rounded-full ring-2 ring-purple-200/50 hover:ring-purple-300/70 transition-all duration-300"
                     />
                   )}
-                  <span className="text-sm font-medium text-gray-700 hover:text-purple-600 transition-colors duration-300">
+                  <span className="text-xs md:text-sm font-medium text-gray-700 hover:text-purple-600 transition-colors duration-300">
                     @{user.username}
                   </span>
                 </div>
@@ -91,7 +88,7 @@ export function Navigation() {
                 <div className="relative hidden lg:block">
                   {isVerified ? (
                     <div
-                      className="group relative inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg backdrop-blur-sm bg-emerald-50/70 text-emerald-700 border border-emerald-200/60 cursor-default hover:bg-emerald-100/70 hover:border-emerald-300/60 transition-all duration-300"
+                      className="group relative inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full backdrop-blur-sm bg-emerald-50/70 text-emerald-700 border border-emerald-200/60 cursor-default hover:bg-emerald-100/70 hover:border-emerald-300/60 transition-all duration-300"
                       onMouseEnter={() => setShowVerifiedTooltip(true)}
                       onMouseLeave={() => setShowVerifiedTooltip(false)}
                     >
@@ -113,7 +110,7 @@ export function Navigation() {
                   ) : (
                     <Link
                       href="/mini/contract-test"
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg backdrop-blur-sm bg-gradient-to-r from-purple-500/90 to-blue-500/90 text-white border border-purple-300/40 hover:from-purple-600 hover:to-blue-600 hover:scale-105 hover:shadow-lg transition-all duration-300"
+                      className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-full backdrop-blur-sm bg-gradient-to-r from-purple-500/90 to-blue-500/90 text-white border border-purple-300/40 hover:from-purple-600 hover:to-blue-600 hover:scale-105 hover:shadow-lg transition-all duration-300"
                     >
                       <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
@@ -126,7 +123,7 @@ export function Navigation() {
                 {/* Wallet Address Badge - Smaller and elegant with tooltip */}
                 {isConnected && address && (
                   <div
-                    className="relative hidden lg:flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-mono text-gray-600 backdrop-blur-sm bg-blue-50/60 rounded-lg border border-blue-200/60 hover:border-blue-300/60 hover:bg-blue-100/60 transition-all duration-300 cursor-pointer"
+                    className="relative hidden lg:flex items-center gap-1 px-2 py-1 text-xs font-mono text-gray-600 backdrop-blur-sm bg-blue-50/60 rounded-full border border-blue-200/60 hover:border-blue-300/60 hover:bg-blue-100/60 transition-all duration-300 cursor-pointer"
                     onMouseEnter={() => setShowWalletTooltip(true)}
                     onMouseLeave={() => setShowWalletTooltip(false)}
                   >
@@ -178,7 +175,7 @@ export function Navigation() {
                                 <button
                                   onClick={openConnectModal}
                                   type="button"
-                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg backdrop-blur-sm bg-gray-100/70 text-gray-700 hover:bg-gray-200/70 hover:scale-105 transition-all duration-300 border border-gray-200/60"
+                                  className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-full backdrop-blur-sm bg-gray-100/70 text-gray-700 hover:bg-gray-200/70 hover:scale-105 transition-all duration-300 border border-gray-200/60"
                                 >
                                   <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
@@ -193,7 +190,7 @@ export function Navigation() {
                                 <button
                                   onClick={openChainModal}
                                   type="button"
-                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg backdrop-blur-sm bg-red-100/70 text-red-700 hover:bg-red-200/70 hover:scale-105 transition-all duration-300 border border-red-200/60"
+                                  className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-full backdrop-blur-sm bg-red-100/70 text-red-700 hover:bg-red-200/70 hover:scale-105 transition-all duration-300 border border-red-200/60"
                                 >
                                   <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                                     <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd"/>
@@ -207,7 +204,7 @@ export function Navigation() {
                               <button
                                 onClick={openAccountModal}
                                 type="button"
-                                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg backdrop-blur-sm bg-blue-50/70 text-blue-700 hover:bg-blue-100/70 hover:scale-105 transition-all duration-300 border border-blue-200/60"
+                                className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-full backdrop-blur-sm bg-blue-50/70 text-blue-700 hover:bg-blue-100/70 hover:scale-105 transition-all duration-300 border border-blue-200/60"
                               >
                                 {chain.hasIcon && (
                                   <div
@@ -238,7 +235,7 @@ export function Navigation() {
                 {/* Sign Out Button - Refined */}
                 <button
                   onClick={signOut}
-                  className="hidden lg:inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg text-gray-600 backdrop-blur-sm bg-white/50 hover:bg-gray-100/70 hover:scale-105 transition-all duration-300 border border-gray-200/60"
+                  className="hidden lg:inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-full text-gray-600 backdrop-blur-sm bg-white/50 hover:bg-gray-100/70 hover:scale-105 transition-all duration-300 border border-gray-200/60"
                 >
                   <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
