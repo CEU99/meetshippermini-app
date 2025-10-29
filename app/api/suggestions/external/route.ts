@@ -142,6 +142,104 @@ export async function POST(request: NextRequest) {
 
     const supabase = getServerSupabase();
 
+    // First, ensure the suggester exists in the database
+    console.log('[API] 🔄 [v2025-10-29] Starting suggester upsert flow');
+    console.log('[API] 🔍 Suggester FID:', session.fid);
+    console.log('[API] 🔍 Suggester username:', session.username);
+    console.log('[API] 🔍 Auth method:', isApiKeyAuth ? 'API Key' : 'Session');
+
+    try {
+      console.log('[API] 📡 Fetching suggester from Farcaster API...');
+      const farcasterSuggester = await neynarAPI.getUserByFid(session.fid);
+
+      if (!farcasterSuggester) {
+        console.error('[API] ❌ Suggester not found on Farcaster - FID:', session.fid);
+        return NextResponse.json(
+          { error: `Suggester (FID: ${session.fid}) not found on Farcaster` },
+          { status: 404 }
+        );
+      }
+
+      const suggesterData = {
+        fid: farcasterSuggester.fid,
+        username: farcasterSuggester.username || `user${farcasterSuggester.fid}`,
+        display_name: farcasterSuggester.display_name || farcasterSuggester.username || `User ${farcasterSuggester.fid}`,
+        avatar_url: farcasterSuggester.pfp_url || '',
+        bio: farcasterSuggester.profile?.bio?.text || '',
+      };
+
+      console.log('[API] ✅ Suggester fetched from Farcaster:', {
+        fid: suggesterData.fid,
+        username: suggesterData.username,
+        display_name: suggesterData.display_name,
+      });
+
+      // Upsert suggester
+      console.log('[API] 💾 Upserting suggester to database...');
+      const { data: upsertedSuggester, error: upsertErrorSuggester } = await supabase
+        .from('users')
+        .upsert({
+          ...suggesterData,
+          has_joined_meetshipper: false,
+          updated_at: new Date().toISOString(),
+        }, {
+          onConflict: 'fid',
+          ignoreDuplicates: false,
+        })
+        .select()
+        .single();
+
+      if (upsertErrorSuggester) {
+        console.error('[API] ❌ Error upserting suggester to database:', {
+          error: upsertErrorSuggester,
+          message: upsertErrorSuggester.message,
+          code: upsertErrorSuggester.code,
+          details: upsertErrorSuggester.details,
+          hint: upsertErrorSuggester.hint,
+        });
+        return NextResponse.json(
+          { error: 'Failed to register suggester', details: upsertErrorSuggester.message },
+          { status: 500 }
+        );
+      }
+
+      console.log('[API] ✅ Suggester successfully upserted to database:', {
+        fid: upsertedSuggester?.fid,
+        username: upsertedSuggester?.username,
+      });
+
+      // Verify suggester exists
+      console.log('[API] 🔍 Verifying suggester exists in database...');
+      const { data: verifiedSuggester, error: verifyError } = await supabase
+        .from('users')
+        .select('fid, username')
+        .eq('fid', session.fid)
+        .single();
+
+      if (verifyError || !verifiedSuggester) {
+        console.error('[API] ❌ Suggester verification failed:', verifyError);
+        return NextResponse.json(
+          { error: 'Failed to verify suggester in database', details: verifyError?.message },
+          { status: 500 }
+        );
+      }
+
+      console.log('[API] ✅ Suggester verified in database:', verifiedSuggester);
+    } catch (error) {
+      console.error('[API] ❌ Exception during suggester upsert:', {
+        error,
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
+      });
+      return NextResponse.json(
+        {
+          error: `Suggester (FID: ${session.fid}) could not be registered`,
+          details: error instanceof Error ? error.message : 'Unknown error',
+        },
+        { status: 500 }
+      );
+    }
+
     // Fetch both users from Farcaster and upsert to database
     console.log('[API] Fetching User A from Farcaster:', userAFid);
     let userAData;
@@ -242,6 +340,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Create the external suggestion
+    console.log('[API] 📝 All users upserted. Creating match_suggestions record...');
+    console.log('[API] 📝 Record details:', {
+      created_by_fid: session.fid,
+      user_a_fid: userAFid,
+      user_b_fid: userBFid,
+      status: 'pending_external',
+    });
+
     const { data: suggestion, error: createError } = await supabase
       .from('match_suggestions')
       .insert({
