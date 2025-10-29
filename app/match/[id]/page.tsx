@@ -306,23 +306,134 @@ export default function MatchPage() {
             {isActive && !bothAccepted && (
               <>
                 {isExternal ? (
-                  // External matches - show join button
-                  <div className="text-center">
-                    <button
-                      onClick={() => {
-                        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ||
-                                       process.env.NEXT_PUBLIC_APP_URL ||
-                                       'https://www.meetshipper.com';
-                        window.location.href = baseUrl;
-                      }}
-                      className="inline-flex items-center justify-center bg-gradient-to-r from-purple-600 to-blue-600 text-white px-8 py-4 rounded-lg font-semibold text-lg hover:from-purple-700 hover:to-blue-700 transition-all shadow-lg hover:shadow-xl"
-                    >
-                      Join MeetShipper to Accept or Decline
-                    </button>
-                    <p className="mt-4 text-gray-600 text-sm max-w-md mx-auto">
-                      You need to join MeetShipper to respond to this match.<br />
-                      Scan the QR or visit MeetShipper.com to get started.
-                    </p>
+                  // External matches - show full join experience
+                  <div>
+                    {/* Join Header */}
+                    <div className="text-center mb-8 pb-8 border-b border-gray-200">
+                      <div className="text-6xl mb-4">🚀</div>
+                      <h2 className="text-3xl font-bold text-gray-900 mb-3">Join MeetShipper</h2>
+                      <p className="text-lg text-gray-600">
+                        Connect with amazing people on Farcaster
+                      </p>
+                    </div>
+
+                    {/* Invitation Box */}
+                    <div className="mb-8 p-6 bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg border-2 border-purple-200">
+                      <div className="text-center">
+                        <div className="text-5xl mb-3">🤝</div>
+                        <h3 className="text-xl font-bold text-gray-900 mb-2">
+                          You were invited to a match!
+                        </h3>
+                        <p className="text-gray-600">
+                          Someone thinks you should connect with another member.
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* 3-Step Guide */}
+                    <div className="mb-8">
+                      <h3 className="text-2xl font-bold text-gray-900 mb-4 text-center">
+                        Get Started in 3 Easy Steps
+                      </h3>
+
+                      <div className="space-y-4 max-w-md mx-auto mb-8">
+                        <div className="flex items-start gap-4 p-4 bg-gray-50 rounded-lg">
+                          <div className="flex-shrink-0 w-8 h-8 bg-purple-600 text-white rounded-full flex items-center justify-center font-bold">
+                            1
+                          </div>
+                          <div>
+                            <h4 className="font-semibold text-gray-900">Visit MeetShipper</h4>
+                            <p className="text-sm text-gray-600">Click the button below to go to our homepage</p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-start gap-4 p-4 bg-gray-50 rounded-lg">
+                          <div className="flex-shrink-0 w-8 h-8 bg-purple-600 text-white rounded-full flex items-center justify-center font-bold">
+                            2
+                          </div>
+                          <div>
+                            <h4 className="font-semibold text-gray-900">Sign In with Farcaster</h4>
+                            <p className="text-sm text-gray-600">Connect your Farcaster account securely</p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-start gap-4 p-4 bg-gray-50 rounded-lg">
+                          <div className="flex-shrink-0 w-8 h-8 bg-purple-600 text-white rounded-full flex items-center justify-center font-bold">
+                            3
+                          </div>
+                          <div>
+                            <h4 className="font-semibold text-gray-900">Start Connecting</h4>
+                            <p className="text-sm text-gray-600">Accept or decline your invitation and explore matches</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Primary CTA Button */}
+                      <div className="text-center">
+                        <button
+                          onClick={() => {
+                            const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ||
+                                           process.env.NEXT_PUBLIC_APP_URL ||
+                                           'https://www.meetshipper.com';
+                            window.location.href = baseUrl;
+                          }}
+                          className="w-full max-w-md bg-gradient-to-r from-purple-600 to-blue-600 text-white px-8 py-4 rounded-lg font-bold text-lg hover:from-purple-700 hover:to-blue-700 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+                        >
+                          Go to MeetShipper.com
+                        </button>
+
+                        <p className="mt-4 text-sm text-gray-500">
+                          Scan the QR code or click above to get started
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* QR Code Section */}
+                    <div className="border-t border-gray-200 pt-8">
+                      <div className="text-center">
+                        <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                          Scan QR Code to Join
+                        </h3>
+                        <div className="flex justify-center mb-4">
+                          <div className="bg-white p-6 rounded-lg shadow-md border-2 border-gray-200">
+                            <div className="w-48 h-48 bg-gradient-to-br from-purple-100 to-blue-100 rounded-lg flex items-center justify-center">
+                              <div className="text-center">
+                                <div className="text-4xl mb-2">📱</div>
+                                <p className="text-sm font-medium text-gray-700">QR Code</p>
+                                <p className="text-xs text-gray-500 mt-1">www.meetshipper.com</p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        <p className="text-sm text-gray-600">
+                          Open your camera app and point it at the QR code
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Features */}
+                    <div className="mt-8 pt-8 border-t border-gray-200">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-4 text-center">
+                        Why Join MeetShipper?
+                      </h3>
+                      <div className="grid md:grid-cols-3 gap-4">
+                        <div className="text-center p-4">
+                          <div className="text-3xl mb-2">🎯</div>
+                          <h4 className="font-semibold text-gray-900 mb-1">Smart Matching</h4>
+                          <p className="text-sm text-gray-600">AI-powered connections based on your interests</p>
+                        </div>
+                        <div className="text-center p-4">
+                          <div className="text-3xl mb-2">🔒</div>
+                          <h4 className="font-semibold text-gray-900 mb-1">Privacy First</h4>
+                          <p className="text-sm text-gray-600">Your data stays secure and private</p>
+                        </div>
+                        <div className="text-center p-4">
+                          <div className="text-3xl mb-2">⚡</div>
+                          <h4 className="font-semibold text-gray-900 mb-1">Easy to Use</h4>
+                          <p className="text-sm text-gray-600">Simple, intuitive interface for everyone</p>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 ) : (
                   // Internal matches - show accept/decline buttons
