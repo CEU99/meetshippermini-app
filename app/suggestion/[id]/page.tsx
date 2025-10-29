@@ -299,22 +299,46 @@ export default function SuggestionPage() {
 
             {/* Action Buttons */}
             {isActive && !bothAccepted && (
-              <div className="flex gap-4">
-                <button
-                  onClick={handleAccept}
-                  disabled={actionLoading}
-                  className="flex-1 bg-green-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  {actionLoading ? 'Processing...' : 'Accept Suggestion'}
-                </button>
-                <button
-                  onClick={handleDecline}
-                  disabled={actionLoading}
-                  className="flex-1 bg-gray-200 text-gray-700 px-6 py-3 rounded-lg font-semibold hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  {actionLoading ? 'Processing...' : 'Decline'}
-                </button>
-              </div>
+              <>
+                {isExternal ? (
+                  // External suggestions - show join button
+                  <div className="text-center">
+                    <button
+                      onClick={() => {
+                        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ||
+                                       process.env.NEXT_PUBLIC_APP_URL ||
+                                       'https://www.meetshipper.com';
+                        window.location.href = baseUrl;
+                      }}
+                      className="inline-flex items-center justify-center bg-gradient-to-r from-purple-600 to-blue-600 text-white px-8 py-4 rounded-lg font-semibold text-lg hover:from-purple-700 hover:to-blue-700 transition-all shadow-lg hover:shadow-xl"
+                    >
+                      Join MeetShipper to Accept or Decline
+                    </button>
+                    <p className="mt-4 text-gray-600 text-sm max-w-md mx-auto">
+                      You need to join MeetShipper to respond to this suggestion.<br />
+                      Scan the QR or visit MeetShipper.com to get started.
+                    </p>
+                  </div>
+                ) : (
+                  // Internal suggestions - show accept/decline buttons
+                  <div className="flex gap-4">
+                    <button
+                      onClick={handleAccept}
+                      disabled={actionLoading}
+                      className="flex-1 bg-green-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      {actionLoading ? 'Processing...' : 'Accept Suggestion'}
+                    </button>
+                    <button
+                      onClick={handleDecline}
+                      disabled={actionLoading}
+                      className="flex-1 bg-gray-200 text-gray-700 px-6 py-3 rounded-lg font-semibold hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      {actionLoading ? 'Processing...' : 'Decline'}
+                    </button>
+                  </div>
+                )}
+              </>
             )}
 
             {bothAccepted && suggestion.chat_room_id && (
