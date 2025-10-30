@@ -32,13 +32,13 @@ export function Navigation() {
   };
 
   return (
-    <nav className="backdrop-blur-md bg-white/50 dark:bg-slate-900/50 border-b border-white/20 shadow-sm shadow-purple-100/30 sticky top-0 z-50 animate-fade-in rounded-b-2xl transition-all duration-300">
+    <nav className="backdrop-blur-md bg-gradient-to-r from-purple-700 to-indigo-800 border-b border-purple-500/20 shadow-sm shadow-purple-900/30 sticky top-0 z-50 animate-fade-in rounded-b-2xl transition-all duration-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-10 md:h-11">
           {/* Left: Logo */}
           <div className="flex items-center gap-2.5 md:gap-3">
             <Link href="/dashboard" className="flex items-center group">
-              <span className="text-base md:text-lg font-semibold bg-gradient-to-r from-purple-500 via-pink-500 to-blue-500 bg-clip-text text-transparent animate-gradient-x opacity-90">
+              <span className="text-base md:text-lg font-semibold text-white drop-shadow-sm">
                 Meet Shipper
               </span>
             </Link>
@@ -53,8 +53,8 @@ export function Navigation() {
                     href={item.href}
                     className={`relative px-2 md:px-3 py-1 text-[11px] sm:text-[12px] md:text-[13px] font-normal tracking-wide rounded-full transition-all duration-300 ${
                       isActive
-                        ? 'bg-gradient-to-r from-purple-500 to-blue-500 text-white shadow-md px-2 py-0.5 text-[12px] font-medium'
-                        : 'text-gray-600 dark:text-gray-300 hover:text-purple-500 hover:bg-gray-50/50 hover:scale-105'
+                        ? 'bg-white text-purple-700 shadow-md px-2 py-0.5 text-[12px] font-medium'
+                        : 'text-white/90 hover:text-white hover:bg-white/20 hover:scale-105'
                     }`}
                   >
                     {item.label}
@@ -246,7 +246,7 @@ export function Navigation() {
                 {/* Mobile Menu Button (Hamburger) */}
                 <button
                   onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                  className="lg:hidden inline-flex items-center justify-center p-2 rounded-lg text-gray-600 hover:text-purple-600 hover:bg-gray-100 transition-all duration-300"
+                  className="lg:hidden inline-flex items-center justify-center p-2 rounded-lg text-white hover:text-white hover:bg-white/20 transition-all duration-300"
                   aria-label="Toggle menu"
                 >
                   {mobileMenuOpen ? (
@@ -265,7 +265,7 @@ export function Navigation() {
         </div>
       </div>
 
-      {/* Mobile Slide-out Menu */}
+      {/* Mobile Slide-down Menu */}
       {mobileMenuOpen && (
         <>
           {/* Backdrop */}
@@ -275,30 +275,32 @@ export function Navigation() {
           ></div>
 
           {/* Menu Panel */}
-          <div className="fixed top-16 right-0 bottom-0 w-80 backdrop-blur-xl bg-white/95 shadow-2xl z-50 lg:hidden animate-slide-in-right overflow-y-auto border-l border-white/60">
+          <div className="fixed top-[44px] left-0 right-0 max-h-[calc(100vh-44px)] backdrop-blur-lg bg-black/20 shadow-2xl z-50 lg:hidden animate-slide-in-down overflow-y-auto border-b border-white/10">
+            {/* Inner gradient overlay */}
+            <div className="absolute inset-0 bg-gradient-to-b from-purple-700/90 to-indigo-800/90 -z-10"></div>
             <div className="p-6 space-y-6">
               {/* User Profile Section */}
               {user && (
-                <div className="flex items-center gap-3 pb-6 border-b border-purple-100/60">
+                <div className="flex items-center gap-3 pb-6 border-b border-white/20">
                   {user.pfpUrl && (
                     <Image
                       src={user.pfpUrl}
                       alt={user.username}
                       width={48}
                       height={48}
-                      className="rounded-full ring-2 ring-purple-200/50"
+                      className="rounded-full ring-2 ring-white/50"
                     />
                   )}
                   <div>
-                    <p className="text-sm font-semibold text-gray-900">@{user.username}</p>
-                    <p className="text-xs text-gray-500">Farcaster User</p>
+                    <p className="text-sm font-semibold text-white">@{user.username}</p>
+                    <p className="text-xs text-white/70">Farcaster User</p>
                   </div>
                 </div>
               )}
 
               {/* Navigation Links */}
               <div className="space-y-2">
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider px-3">Navigation</p>
+                <p className="text-xs font-semibold text-white/60 uppercase tracking-wider px-3">Navigation</p>
                 {navItems.map((item) => {
                   const isActive = pathname === item.href;
                   return (
@@ -308,13 +310,13 @@ export function Navigation() {
                       onClick={() => setMobileMenuOpen(false)}
                       className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-300 ${
                         isActive
-                          ? 'text-purple-600 backdrop-blur-sm bg-purple-50/70 border border-purple-200/60'
-                          : 'text-gray-700 hover:text-purple-600 hover:bg-gray-50/50'
+                          ? 'text-purple-700 backdrop-blur-sm bg-white border border-white/40'
+                          : 'text-white hover:text-white hover:bg-white/20'
                       }`}
                     >
                       {item.label}
                       {isActive && (
-                        <span className="ml-auto w-2 h-2 bg-gradient-to-r from-purple-600 to-blue-600 rounded-full"></span>
+                        <span className="ml-auto w-2 h-2 bg-purple-600 rounded-full"></span>
                       )}
                     </Link>
                   );
@@ -322,8 +324,8 @@ export function Navigation() {
               </div>
 
               {/* Wallet Section */}
-              <div className="space-y-3 pt-4 border-t border-purple-100/60">
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider px-3">Wallet</p>
+              <div className="space-y-3 pt-4 border-t border-white/20">
+                <p className="text-xs font-semibold text-white/60 uppercase tracking-wider px-3">Wallet</p>
 
                 {/* Verified Badge */}
                 {isVerified ? (
@@ -337,7 +339,7 @@ export function Navigation() {
                   <Link
                     href="/mini/contract-test"
                     onClick={() => setMobileMenuOpen(false)}
-                    className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-white backdrop-blur-sm bg-gradient-to-r from-purple-500/90 to-blue-500/90 border border-purple-300/40 hover:from-purple-600 hover:to-blue-600 transition-all duration-300"
+                    className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-purple-700 backdrop-blur-sm bg-white border border-white/40 hover:bg-white/90 transition-all duration-300"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
@@ -348,11 +350,11 @@ export function Navigation() {
 
                 {/* Wallet Address */}
                 {isConnected && address && (
-                  <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg backdrop-blur-sm bg-blue-50/60 border border-blue-200/60">
-                    <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg backdrop-blur-sm bg-white/20 border border-white/30">
+                    <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
                     </svg>
-                    <span className="text-xs font-mono text-gray-600">{formatAddress(address)}</span>
+                    <span className="text-xs font-mono text-white">{formatAddress(address)}</span>
                   </div>
                 )}
 
@@ -377,7 +379,7 @@ export function Navigation() {
                           <button
                             onClick={openConnectModal}
                             type="button"
-                            className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium backdrop-blur-sm bg-gray-100/70 text-gray-700 hover:bg-gray-200/70 transition-all duration-300 border border-gray-200/60"
+                            className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium backdrop-blur-sm bg-white/20 text-white hover:bg-white/30 transition-all duration-300 border border-white/30"
                           >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
@@ -406,7 +408,7 @@ export function Navigation() {
                         <button
                           onClick={openAccountModal}
                           type="button"
-                          className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium backdrop-blur-sm bg-blue-50/70 text-blue-700 hover:bg-blue-100/70 transition-all duration-300 border border-blue-200/60"
+                          className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium backdrop-blur-sm bg-white/20 text-white hover:bg-white/30 transition-all duration-300 border border-white/30"
                         >
                           {chain.hasIcon && (
                             <div
@@ -433,13 +435,13 @@ export function Navigation() {
               </div>
 
               {/* Sign Out Button */}
-              <div className="pt-4 border-t border-purple-100/60">
+              <div className="pt-4 border-t border-white/20">
                 <button
                   onClick={() => {
                     signOut();
                     setMobileMenuOpen(false);
                   }}
-                  className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-red-600 backdrop-blur-sm bg-red-50/70 hover:bg-red-100/70 transition-all duration-300 border border-red-200/60"
+                  className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-red-100 backdrop-blur-sm bg-red-600/80 hover:bg-red-600 transition-all duration-300 border border-red-500/60"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>

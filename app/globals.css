@@ -128,6 +128,22 @@ body {
   animation: slideInRight 0.3s ease-out;
 }
 
+/* Slide-down animation for mobile menu */
+@keyframes slideInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-in-down {
+  animation: slideInDown 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
 /* Smooth transitions for interactive elements */
 .transition-elegant {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
