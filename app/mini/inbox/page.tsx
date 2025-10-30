@@ -138,7 +138,7 @@ export default function Inbox() {
     return () => clearInterval(interval);
   }, []);
 
-  // Real-time subscription for chat room creation
+  // Real-time subscription for match status changes (both users can see matches via RLS)
   useEffect(() => {
     if (!isAuthenticated || !user) return;
 
@@ -147,34 +147,54 @@ export default function Inbox() {
     const setupRealtimeSubscription = async () => {
       const { supabase } = await import('@/lib/supabase');
 
-      // Subscribe to chat_rooms table for INSERT events
+      // Subscribe to matches table for UPDATE events when status changes to 'accepted'
+      // This avoids RLS filtering issues since both participants can always see their matches
       channel = supabase
-        .channel('inbox-chat-rooms')
+        .channel('inbox-match-updates')
         .on(
           'postgres_changes',
           {
-            event: 'INSERT',
+            event: 'UPDATE',
             schema: 'public',
-            table: 'chat_rooms',
+            table: 'matches',
+            filter: `status=eq.accepted`,
           },
           async (payload) => {
-            console.log('[Inbox] Chat room created:', payload);
+            console.log('[Inbox] Match status updated to accepted:', payload);
 
-            // Check if this chat room is for one of the current user's matches
-            const newRoom = payload.new as { id: string; match_id: string };
+            const updatedMatch = payload.new as any;
 
-            // Verify this match involves the current user by querying the match
-            const { data: match } = await supabase
-              .from('matches')
-              .select('user_a_fid, user_b_fid')
-              .eq('id', newRoom.match_id)
-              .single();
+            // Check if this match involves the current user
+            if (updatedMatch.user_a_fid === user.fid || updatedMatch.user_b_fid === user.fid) {
+              console.log('[Inbox] Match accepted for current user, fetching chat room');
 
-            if (match && (match.user_a_fid === user.fid || match.user_b_fid === user.fid)) {
-              console.log('[Inbox] Chat room is for current user, updating state');
+              // Fetch the chat room for this match
+              const { data: chatRoom } = await supabase
+                .from('chat_rooms')
+                .select('id')
+                .eq('match_id', updatedMatch.id)
+                .single();
 
-              // Update the chatRoomMap with the new room
-              setChatRoomMap(prev => new Map(prev).set(newRoom.match_id, newRoom.id));
+              if (chatRoom) {
+                console.log('[Inbox] Chat room found, updating chatRoomMap:', chatRoom.id);
+                // Update the chatRoomMap with the chat room
+                setChatRoomMap(prev => new Map(prev).set(updatedMatch.id, chatRoom.id));
+              } else {
+                console.log('[Inbox] Chat room not found yet, will be created shortly');
+                // If chat room doesn't exist yet, wait a bit and try again
+                setTimeout(async () => {
+                  const { data: delayedRoom } = await supabase
+                    .from('chat_rooms')
+                    .select('id')
+                    .eq('match_id', updatedMatch.id)
+                    .single();
+
+                  if (delayedRoom) {
+                    console.log('[Inbox] Chat room found on retry:', delayedRoom.id);
+                    setChatRoomMap(prev => new Map(prev).set(updatedMatch.id, delayedRoom.id));
+                  }
+                }, 1000);
+              }
 
               // Refresh matches to get updated status
               fetchMatches();
@@ -182,12 +202,15 @@ export default function Inbox() {
           }
         )
         .subscribe();
+
+      console.log('[Inbox] Real-time subscription established for user:', user.fid);
     };
 
     setupRealtimeSubscription();
 
     return () => {
       if (channel) {
+        console.log('[Inbox] Unsubscribing from real-time channel');
         channel.unsubscribe();
       }
     };
