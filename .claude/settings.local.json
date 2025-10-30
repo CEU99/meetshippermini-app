@@ -54,7 +54,12 @@
       "Bash(then source .env.local)",
       "Bash(else echo \"No .env.local file\")",
       "Bash(then echo \"ERROR: DATABASE_URL not set\")",
-      "Bash(else echo \"DATABASE_URL is set\")"
+      "Bash(else echo \"DATABASE_URL is set\")",
+      "Bash(SUPABASE_URL=\"https://mpsnsxmznxvoqcslcaom.supabase.co\" SUPABASE_SERVICE_ROLE_KEY=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1wc25zeG16bnh2b3Fjc2xjYW9tIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MDgwMTAzMSwiZXhwIjoyMDc2Mzc3MDMxfQ.06fhNNLq6cjv_0Pc4FpvQxN4yIhB1oNmsy5HSgtouVg\" npx tsx scripts/test-meetshipper-rooms.ts)",
+      "Bash(SUPABASE_URL=\"https://mpsnsxmznxvoqcslcaom.supabase.co\" SUPABASE_SERVICE_ROLE_KEY=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1wc25zeG16bnh2b3Fjc2xjYW9tIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MDgwMTAzMSwiZXhwIjoyMDc2Mzc3MDMxfQ.06fhNNLq6cjv_0Pc4FpvQxN4yIhB1oNmsy5HSgtouVg\" npx tsx scripts/test-message-send.ts)",
+      "Bash(SUPABASE_URL=\"https://mpsnsxmznxvoqcslcaom.supabase.co\" SUPABASE_SERVICE_ROLE_KEY=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1wc25zeG16bnh2b3Fjc2xjYW9tIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MDgwMTAzMSwiZXhwIjoyMDc2Mzc3MDMxfQ.06fhNNLq6cjv_0Pc4FpvQxN4yIhB1oNmsy5HSgtouVg\" npx tsx scripts/apply-message-migration.ts)",
+      "Bash(SUPABASE_URL=\"https://mpsnsxmznxvoqcslcaom.supabase.co\" SUPABASE_SERVICE_ROLE_KEY=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1wc25zeG16bnh2b3Fjc2xjYW9tIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MDgwMTAzMSwiZXhwIjoyMDc2Mzc3MDMxfQ.06fhNNLq6cjv_0Pc4FpvQxN4yIhB1oNmsy5HSgtouVg\" npx tsx scripts/check-message-setup.ts)",
+      "Bash(SUPABASE_URL=\"https://mpsnsxmznxvoqcslcaom.supabase.co\" SUPABASE_SERVICE_ROLE_KEY=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1wc25zeG16bnh2b3Fjc2xjYW9tIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MDgwMTAzMSwiZXhwIjoyMDc2Mzc3MDMxfQ.06fhNNLq6cjv_0Pc4FpvQxN4yIhB1oNmsy5HSgtouVg\" npx tsx scripts/test-realtime-config.ts)"
     ],
     "deny": [],
     "ask": []

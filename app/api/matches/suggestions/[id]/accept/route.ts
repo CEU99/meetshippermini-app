@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { getServerSupabase } from '@/lib/supabase';
-import { ensureChatRoom } from '@/lib/services/chat-service';
+import { ensureMeetshipperRoom } from '@/lib/services/meetshipper-room-service';
 
 /**
  * POST /api/matches/suggestions/[id]/accept
@@ -108,13 +108,13 @@ export async function POST(
       b_accepted: updatedSuggestion.b_accepted,
     });
 
-    // If both accepted, create chat room
-    let chatRoomId: string | undefined;
+    // If both accepted, create MeetShipper conversation room
+    let roomId: string | undefined;
     if (updatedSuggestion.a_accepted && updatedSuggestion.b_accepted) {
-      console.log('[API] Both users accepted, creating chat room');
+      console.log('[API] Both users accepted, creating MeetShipper conversation room');
 
       try {
-        // First, create a regular match record for compatibility with existing chat system
+        // First, create a regular match record for compatibility with existing system
         const { data: match, error: matchError } = await supabase
           .from('matches')
           .insert({
@@ -138,38 +138,38 @@ export async function POST(
           throw matchError;
         }
 
-        // Create chat room
-        const chatRoom = await ensureChatRoom(
+        // Create MeetShipper conversation room
+        const room = await ensureMeetshipperRoom(
           match.id,
           suggestion.user_a_fid,
           suggestion.user_b_fid
         );
-        chatRoomId = chatRoom.id;
+        roomId = room.id;
 
-        // Update suggestion with chat_room_id
+        // Update suggestion with room_id
         await supabase
           .from('match_suggestions')
-          .update({ chat_room_id: chatRoomId })
+          .update({ chat_room_id: roomId })
           .eq('id', id);
 
-        console.log('[API] Chat room created:', chatRoomId);
+        console.log('[API] MeetShipper conversation room created:', roomId);
 
-        // TODO: Send notifications about chat room availability
+        // TODO: Send notifications about conversation room availability
         // TODO: Award points to suggester and participants
       } catch (error) {
-        console.error('[API] Error creating chat room:', error);
+        console.error('[API] Error creating MeetShipper conversation room:', error);
         // Don't fail the acceptance, just log the error
-        // The chat room can be created later or manually if needed
+        // The room can be created later or manually if needed
       }
     }
 
     return NextResponse.json({
       success: true,
       suggestion: updatedSuggestion,
-      chatRoomId,
+      roomId,
       bothAccepted: updatedSuggestion.a_accepted && updatedSuggestion.b_accepted,
-      message: chatRoomId
-        ? 'Chat room is ready! Both parties accepted.'
+      message: roomId
+        ? 'Conversation room is ready! Both parties accepted.'
         : 'Suggestion accepted! Waiting for the other party.',
     });
   } catch (error) {

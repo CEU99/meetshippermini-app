@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useFarcasterAuth } from '@/components/providers/FarcasterAuthProvider';
 import { Navigation } from '@/components/shared/Navigation';
 import Image from 'next/image';
-import { apiClient, declineAllMatch } from '@/lib/api-client';
+import { apiClient, declineAllMatch, fetchMeetshipperRooms } from '@/lib/api-client';
 import { Trait } from '@/lib/constants/traits';
 
 interface MatchRationale {
@@ -103,7 +103,7 @@ export default function Inbox() {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [currentTime, setCurrentTime] = useState(Date.now());
-  const [chatRoomMap, setChatRoomMap] = useState<Map<string, string>>(new Map()); // matchId -> roomId
+  const [roomMap, setRoomMap] = useState<Map<string, string>>(new Map()); // matchId -> roomId
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [userSuggestions, setUserSuggestions] = useState<UserSuggestion[]>([]);
   const [selectedUserSuggestion, setSelectedUserSuggestion] = useState<UserSuggestion | null>(null);
@@ -148,7 +148,7 @@ export default function Inbox() {
       const { supabase } = await import('@/lib/supabase');
 
       // Subscribe to matches table for UPDATE events when status changes to 'accepted'
-      // This avoids RLS filtering issues since both participants can always see their matches
+      // Always refetch matches on accepted updates to avoid RLS filtering issues
       channel = supabase
         .channel('inbox-match-updates')
         .on(
@@ -162,43 +162,16 @@ export default function Inbox() {
           async (payload) => {
             console.log('[Inbox] Match status updated to accepted:', payload);
 
-            const updatedMatch = payload.new as any;
+            // Always refetch matches when ANY match becomes accepted
+            // This ensures both participants get the update regardless of RLS filtering on realtime payloads
+            // The fetchMatches() function uses the API endpoint which has proper RLS permissions
+            await fetchMatches();
+            console.log('[Inbox] Force refreshed matches after accepted update');
 
-            // Check if this match involves the current user
-            if (updatedMatch.user_a_fid === user.fid || updatedMatch.user_b_fid === user.fid) {
-              console.log('[Inbox] Match accepted for current user, fetching chat room');
-
-              // Fetch the chat room for this match
-              const { data: chatRoom } = await supabase
-                .from('chat_rooms')
-                .select('id')
-                .eq('match_id', updatedMatch.id)
-                .single();
-
-              if (chatRoom) {
-                console.log('[Inbox] Chat room found, updating chatRoomMap:', chatRoom.id);
-                // Update the chatRoomMap with the chat room
-                setChatRoomMap(prev => new Map(prev).set(updatedMatch.id, chatRoom.id));
-              } else {
-                console.log('[Inbox] Chat room not found yet, will be created shortly');
-                // If chat room doesn't exist yet, wait a bit and try again
-                setTimeout(async () => {
-                  const { data: delayedRoom } = await supabase
-                    .from('chat_rooms')
-                    .select('id')
-                    .eq('match_id', updatedMatch.id)
-                    .single();
-
-                  if (delayedRoom) {
-                    console.log('[Inbox] Chat room found on retry:', delayedRoom.id);
-                    setChatRoomMap(prev => new Map(prev).set(updatedMatch.id, delayedRoom.id));
-                  }
-                }, 1000);
-              }
-
-              // Refresh matches to get updated status
-              fetchMatches();
-            }
+            // Note: We don't fetch chat rooms directly here anymore because:
+            // 1. Client supabase queries are subject to RLS which may block access
+            // 2. fetchMatches() already calls fetchChatRooms() for accepted matches
+            // 3. This prevents race conditions and RLS permission errors
           }
         )
         .subscribe();
@@ -226,10 +199,10 @@ export default function Inbox() {
       if (data.matches) {
         setMatches(data.matches);
 
-        // Fetch chat room IDs for accepted matches
+        // Fetch conversation room IDs for accepted matches
         const acceptedMatches = data.matches.filter(m => m.status === 'accepted' || m.status === 'completed');
         if (acceptedMatches.length > 0) {
-          fetchChatRooms(acceptedMatches);
+          fetchConversationRooms(acceptedMatches);
         }
       }
     } catch (error) {
@@ -239,30 +212,13 @@ export default function Inbox() {
     }
   };
 
-  const fetchChatRooms = async (matches: Match[]) => {
+  const fetchConversationRooms = async (matches: Match[]) => {
     try {
-      // Fetch chat rooms via Supabase client
-      const { data: chatRooms, error } = await apiClient.get<any>('/api/chat/rooms/by-matches', {
-        matchIds: matches.map(m => m.id)
-      }).catch(async () => {
-        // Fallback: use supabase directly
-        const { supabase: sb } = await import('@/lib/supabase');
-        return sb
-          .from('chat_rooms')
-          .select('id, match_id')
-          .in('match_id', matches.map(m => m.id));
-      });
-
-      if (chatRooms) {
-        const newMap = new Map<string, string>();
-        const rooms = Array.isArray(chatRooms) ? chatRooms : chatRooms.data || [];
-        rooms.forEach((room: any) => {
-          newMap.set(room.match_id, room.id);
-        });
-        setChatRoomMap(newMap);
-      }
+      // Fetch MeetShipper conversation rooms using the new API client helper
+      const rooms = await fetchMeetshipperRooms(matches.map(m => m.id));
+      setRoomMap(rooms);
     } catch (error) {
-      console.error('Error fetching chat rooms:', error);
+      console.error('Error fetching conversation rooms:', error);
     }
   };
 
@@ -390,9 +346,9 @@ export default function Inbox() {
           setSelectedMatch(data.match);
         }
 
-        // Store chat room ID if both accepted
-        if (data.chatRoomId) {
-          setChatRoomMap(prev => new Map(prev).set(matchId, data.chatRoomId!));
+        // Store conversation room ID if both accepted
+        if (data.roomId) {
+          setRoomMap(prev => new Map(prev).set(matchId, data.roomId!));
         }
       }
     } catch (error) {
@@ -1111,10 +1067,10 @@ export default function Inbox() {
 
                       {selectedSuggestion.myAcceptance && selectedSuggestion.otherAcceptance && selectedSuggestion.chatRoomId && (
                         <button
-                          onClick={() => router.push(`/mini/chat/${selectedSuggestion.chatRoomId}`)}
+                          onClick={() => router.push(`/mini/meetshipper-room/${selectedSuggestion.chatRoomId}`)}
                           className="w-full px-6 py-3 bg-gradient-to-r from-purple-500 to-indigo-500 text-white rounded-xl hover:from-purple-600 hover:to-indigo-600 font-semibold shadow-md hover:shadow-lg transition-all duration-200"
                         >
-                          💬 Open Chat Room
+                          🤝 MeetShipper Conversation Room
                         </button>
                       )}
                     </div>
@@ -1307,25 +1263,25 @@ export default function Inbox() {
                     </div>
                   )}
 
-                  {/* Chat Room Access */}
+                  {/* MeetShipper Conversation Room Access */}
                   {(selectedMatch.status === 'accepted' || selectedMatch.status === 'completed') && (() => {
-                    const chatRoomId = chatRoomMap.get(selectedMatch.id);
+                    const roomId = roomMap.get(selectedMatch.id);
 
                     return (
                       <div className="backdrop-blur-xl bg-gradient-to-r from-green-50/80 to-emerald-50/80 border border-green-200/60 rounded-xl p-6 shadow-sm">
                         <h4 className="font-bold text-green-900 mb-3 flex items-center gap-2 text-lg">
                           <span>{selectedMatch.status === 'completed' ? '🎉' : '💬'}</span>
-                          <span>{selectedMatch.status === 'completed' ? 'Meeting Completed!' : 'Chat Room Ready!'}</span>
+                          <span>{selectedMatch.status === 'completed' ? 'Meeting Completed!' : 'Conversation Room Ready!'}</span>
                         </h4>
                         <p className="text-sm text-green-800 mb-4 leading-relaxed">
-                          Both parties have accepted. Your chat room is ready to use!
+                          Both parties have accepted. Your MeetShipper Conversation Room is ready!
                         </p>
 
-                        {/* 2-Hour Rule Message */}
+                        {/* Room Instructions */}
                         {selectedMatch.status === 'accepted' && (
                           <div className="backdrop-blur-xl bg-gradient-to-r from-blue-50/80 to-cyan-50/80 border border-blue-300/60 rounded-lg p-4 mb-4">
                             <p className="text-sm text-blue-900 leading-relaxed">
-                              <span className="font-semibold">⏱️ Important:</span> The 2-hour countdown will start as soon as either person enters the chat room or sends the first message. After 2 hours, the room will auto-close (read-only).
+                              <span className="font-semibold">💡 How it works:</span> You can enter and leave the conversation room freely. When you're done meeting, either person can click "Conversation Completed" to close the room permanently.
                             </p>
                           </div>
                         )}
@@ -1334,23 +1290,23 @@ export default function Inbox() {
                         {selectedMatch.status === 'completed' && (
                           <div className="backdrop-blur-xl bg-gradient-to-r from-purple-50/80 to-violet-50/80 border border-purple-300/60 rounded-lg p-4 mb-4">
                             <p className="text-sm text-purple-900 leading-relaxed">
-                              ✅ This meeting has been marked as completed. You can still access the chat history.
+                              ✅ This meeting has been marked as completed. The conversation room is now closed.
                             </p>
                           </div>
                         )}
 
                         <div className="flex space-x-3">
-                          {chatRoomId ? (
+                          {roomId ? (
                             <button
-                              onClick={() => router.push(`/mini/chat/${chatRoomId}`)}
-                              className="px-8 py-3 rounded-xl font-semibold bg-gradient-to-r from-green-500 to-emerald-500 text-white hover:from-green-600 hover:to-emerald-600 shadow-md hover:shadow-lg transition-all duration-200"
+                              onClick={() => router.push(`/mini/meetshipper-room/${roomId}`)}
+                              className="px-8 py-3 rounded-xl font-semibold bg-gradient-to-r from-purple-500 to-indigo-500 text-white hover:from-purple-600 hover:to-indigo-600 shadow-md hover:shadow-lg transition-all duration-200"
                             >
-                              💬 Open Chat
+                              🤝 MeetShipper Conversation Room
                             </button>
                           ) : (
                             <div className="text-sm text-gray-600 flex items-center gap-2">
                               <span className="animate-spin">⏳</span>
-                              <span>Loading chat room...</span>
+                              <span>Loading conversation room...</span>
                             </div>
                           )}
                         </div>

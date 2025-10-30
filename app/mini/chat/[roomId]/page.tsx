@@ -3,7 +3,6 @@
 import { useEffect, useState, useRef, use } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { RealtimeChannel } from '@supabase/supabase-js';
 
 interface ChatMessage {
   id: string;
@@ -61,7 +60,6 @@ export default function ChatRoomPage({
   const [isCompleting, setIsCompleting] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const channelRef = useRef<RealtimeChannel | null>(null);
 
   // Scroll to bottom when messages change
   const scrollToBottom = () => {
@@ -121,36 +119,70 @@ export default function ChatRoomPage({
     }
   };
 
-  // Subscribe to realtime messages
+  // Initial room fetch
   useEffect(() => {
     fetchRoom();
+  }, [roomId]);
 
-    // Set up realtime subscription
-    const channel = supabase
-      .channel(`chat_room_${roomId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'chat_messages',
-          filter: `room_id=eq.${roomId}`,
-        },
-        (payload) => {
-          const newMsg = payload.new as ChatMessage;
-          setMessages((prev) => [...prev, newMsg]);
+  // Polling mechanism for messages (fallback since Realtime not available)
+  useEffect(() => {
+    if (!room || !currentUserFid) return;
+
+    console.log('[Chat] 🔄 Setting up message polling for room:', roomId);
+    console.log('[Chat] Polling interval: 2 seconds');
+    console.log('[Chat] Note: Using polling because Supabase Realtime is not available in this region');
+
+    let pollInterval: NodeJS.Timeout;
+    let isPolling = true;
+
+    const pollMessages = async () => {
+      if (!isPolling) return;
+
+      try {
+        const response = await fetch(`/api/chat/rooms/${roomId}`);
+        const data = await response.json();
+
+        if (data && data.data && data.data.messages) {
+          setMessages((prev) => {
+            // Only update if we have new messages
+            const newMessages = data.data.messages.filter(
+              (newMsg: ChatMessage) => !prev.some((existingMsg) => existingMsg.id === newMsg.id)
+            );
+
+            if (newMessages.length > 0) {
+              console.log('[Chat] 📨 Polled and found', newMessages.length, 'new message(s)');
+              return data.data.messages; // Use complete list from server
+            }
+
+            return prev; // No changes
+          });
+
+          // Update room data and remaining seconds
+          setRoom(data.data);
+          setRemainingSeconds(data.data.remaining_seconds);
         }
-      )
-      .subscribe();
-
-    channelRef.current = channel;
-
-    return () => {
-      if (channelRef.current) {
-        supabase.removeChannel(channelRef.current);
+      } catch (error) {
+        console.error('[Chat] Error polling messages:', error);
       }
     };
-  }, [roomId]);
+
+    // Initial poll
+    pollMessages();
+
+    // Set up polling interval
+    pollInterval = setInterval(pollMessages, 2000);
+    console.log('[Chat] ✅ Polling started - checking for new messages every 2 seconds');
+
+    // Cleanup function
+    return () => {
+      console.log('[Chat] 🧹 Stopping message polling');
+      isPolling = false;
+      if (pollInterval) {
+        clearInterval(pollInterval);
+      }
+      console.log('[Chat] ✅ Polling cleanup complete');
+    };
+  }, [room, currentUserFid, roomId]);
 
   // Countdown timer
   useEffect(() => {

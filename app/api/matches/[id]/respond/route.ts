@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { getServerSupabase } from '@/lib/supabase';
-import { ensureChatRoom, getChatRoomByMatchId } from '@/lib/services/chat-service';
+import { ensureMeetshipperRoom } from '@/lib/services/meetshipper-room-service';
 
 /**
  * POST /api/matches/:id/respond
@@ -219,8 +219,8 @@ export async function POST(
       b_accepted: updatedMatch.b_accepted,
     });
 
-    // Initialize chatRoomId variable for use in all code paths
-    let chatRoomId: string | undefined;
+    // Initialize roomId variable for use in all code paths
+    let roomId: string | undefined;
 
     // Create system messages for accept/decline
     if (response === 'decline') {
@@ -251,21 +251,21 @@ export async function POST(
       // Acceptance
       const accepterName = session.username || `User ${userFid}`;
 
-      // If both accepted, create chat room
+      // If both accepted, create MeetShipper conversation room
       if (updatedMatch.a_accepted && updatedMatch.b_accepted) {
-        console.log(`[Match] Both users accepted, creating chat room for match ${id}`);
+        console.log(`[Match] Both users accepted, creating MeetShipper conversation room for match ${id}`);
 
         try {
-          const chatRoom = await ensureChatRoom(id, match.user_a_fid, match.user_b_fid);
-          chatRoomId = chatRoom.id;
-          console.log(`[Match] Chat room created: ${chatRoomId}`);
+          const room = await ensureMeetshipperRoom(id, match.user_a_fid, match.user_b_fid);
+          roomId = room.id;
+          console.log(`[Match] MeetShipper conversation room created: ${roomId}`);
 
-          // Send system messages with chat room notification to BOTH users
+          // Send system messages with room notification to BOTH users
           // Message 1: For User A
           await supabase.from('messages').insert({
             match_id: id,
             sender_fid: match.user_a_fid,
-            content: `🎉 Match accepted! Both parties agreed to meet. Your chat room is ready. Click "Open Chat" to start your conversation. Note: Chat room will auto-close 2 hours after first entry.`,
+            content: `🎉 Match accepted! Both parties agreed to meet. Your conversation room is ready. Click "MeetShipper Conversation Room" to start. You can leave and return anytime until the conversation is marked complete.`,
             is_system_message: true,
           });
 
@@ -273,24 +273,24 @@ export async function POST(
           await supabase.from('messages').insert({
             match_id: id,
             sender_fid: match.user_b_fid,
-            content: `🎉 Match accepted! Both parties agreed to meet. Your chat room is ready. Click "Open Chat" to start your conversation. Note: Chat room will auto-close 2 hours after first entry.`,
+            content: `🎉 Match accepted! Both parties agreed to meet. Your conversation room is ready. Click "MeetShipper Conversation Room" to start. You can leave and return anytime until the conversation is marked complete.`,
             is_system_message: true,
           });
         } catch (error) {
-          console.error(`[Match] Failed to create chat room:`, error);
+          console.error(`[Match] Failed to create MeetShipper conversation room:`, error);
 
-          // Send system messages about acceptance without chat room
+          // Send system messages about acceptance without room
           await supabase.from('messages').insert([
             {
               match_id: id,
               sender_fid: match.user_a_fid,
-              content: `Match accepted by both parties! Chat room creation in progress...`,
+              content: `Match accepted by both parties! Conversation room creation in progress...`,
               is_system_message: true,
             },
             {
               match_id: id,
               sender_fid: match.user_b_fid,
-              content: `Match accepted by both parties! Chat room creation in progress...`,
+              content: `Match accepted by both parties! Conversation room creation in progress...`,
               is_system_message: true,
             }
           ]);
@@ -321,7 +321,7 @@ export async function POST(
       return NextResponse.json({
         success: true,
         match: updatedMatch,
-        chatRoomId,
+        roomId,
       });
     }
 
@@ -330,7 +330,7 @@ export async function POST(
     return NextResponse.json({
       success: true,
       match: matchDetails || updatedMatch,
-      chatRoomId,
+      roomId,
     });
   } catch (error) {
     console.error('[API] Respond error (uncaught):', {

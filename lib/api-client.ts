@@ -135,3 +135,60 @@ export async function declineAllMatch(matchId: string): Promise<{
     match: (response as any).match,
   };
 }
+
+/**
+ * Fetch MeetShipper conversation rooms for given match IDs
+ */
+export async function fetchMeetshipperRooms(
+  matchIds: string[]
+): Promise<Map<string, string>> {
+  if (matchIds.length === 0) {
+    return new Map();
+  }
+
+  const response = await apiClient.get<{
+    success: boolean;
+    data: Array<{ id: string; match_id: string }>;
+  }>(`/api/meetshipper-rooms/by-matches?matchIds=${matchIds.join(',')}`);
+
+  if (!response || !response.data) {
+    return new Map();
+  }
+
+  const roomMap = new Map<string, string>();
+  response.data.forEach((room) => {
+    roomMap.set(room.match_id, room.id);
+  });
+
+  return roomMap;
+}
+
+/**
+ * Close a MeetShipper conversation room permanently
+ */
+export async function closeMeetshipperRoom(
+  roomId: string
+): Promise<{
+  success: boolean;
+  room?: unknown;
+  error?: string;
+}> {
+  const response = await apiClient.post<{
+    success: boolean;
+    room?: unknown;
+    error?: string;
+  }>(`/api/meetshipper-rooms/${roomId}/close`);
+
+  if (!response) {
+    return {
+      success: false,
+      error: 'No response from API',
+    };
+  }
+
+  return {
+    success: response.success ?? false,
+    room: response.room,
+    error: response.error,
+  };
+}
