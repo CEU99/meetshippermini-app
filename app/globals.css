@@ -235,3 +235,29 @@ body {
 .animate-subtle-pulse {
   animation: subtlePulse 3s ease-in-out infinite;
 }
+
+/* Floating fade animation - fade in, float up, fade out, repeat */
+@keyframes floatingFade {
+  0% {
+    opacity: 0;
+    transform: translateY(0);
+  }
+  25% {
+    opacity: 1;
+    transform: translateY(-5px);
+  }
+  75% {
+    opacity: 1;
+    transform: translateY(-5px);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(0);
+  }
+}
+
+.animate-floating-fade {
+  animation: floatingFade 4s ease-in-out infinite;
+  animation-delay: 0.5s;
+  opacity: 0;
+}

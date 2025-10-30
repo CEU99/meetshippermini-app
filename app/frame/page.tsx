@@ -73,8 +73,10 @@ function FramePreview() {
       </a>
 
       {/* Right-center status message */}
-      <div className="hidden lg:block absolute right-10 top-1/2 transform -translate-y-1/2 text-lg font-medium text-white/90 animate-subtle-pulse z-10">
-        We're currently in development — stay tuned! 🚀
+      <div className="absolute right-4 md:right-10 top-1/2 transform -translate-y-1/2 text-lg md:text-2xl lg:text-3xl font-semibold drop-shadow-lg animate-floating-fade z-10 max-w-xs md:max-w-sm text-right">
+        <span className="bg-gradient-to-r from-purple-300 via-pink-300 to-blue-400 bg-clip-text text-transparent">
+          We're currently in development — stay tuned! 🚀
+        </span>
       </div>
 
       <div className="max-w-2xl w-full">
