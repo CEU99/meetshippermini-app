@@ -138,6 +138,61 @@ export default function Inbox() {
     return () => clearInterval(interval);
   }, []);
 
+  // Real-time subscription for chat room creation
+  useEffect(() => {
+    if (!isAuthenticated || !user) return;
+
+    let channel: any;
+
+    const setupRealtimeSubscription = async () => {
+      const { supabase } = await import('@/lib/supabase');
+
+      // Subscribe to chat_rooms table for INSERT events
+      channel = supabase
+        .channel('inbox-chat-rooms')
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'chat_rooms',
+          },
+          async (payload) => {
+            console.log('[Inbox] Chat room created:', payload);
+
+            // Check if this chat room is for one of the current user's matches
+            const newRoom = payload.new as { id: string; match_id: string };
+
+            // Verify this match involves the current user by querying the match
+            const { data: match } = await supabase
+              .from('matches')
+              .select('user_a_fid, user_b_fid')
+              .eq('id', newRoom.match_id)
+              .single();
+
+            if (match && (match.user_a_fid === user.fid || match.user_b_fid === user.fid)) {
+              console.log('[Inbox] Chat room is for current user, updating state');
+
+              // Update the chatRoomMap with the new room
+              setChatRoomMap(prev => new Map(prev).set(newRoom.match_id, newRoom.id));
+
+              // Refresh matches to get updated status
+              fetchMatches();
+            }
+          }
+        )
+        .subscribe();
+    };
+
+    setupRealtimeSubscription();
+
+    return () => {
+      if (channel) {
+        channel.unsubscribe();
+      }
+    };
+  }, [isAuthenticated, user]);
+
   const fetchMatches = async () => {
     setLoading(true);
     try {
