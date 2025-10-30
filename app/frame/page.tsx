@@ -61,7 +61,22 @@ function FramePreview() {
   const buttons = getButtons();
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-gradient-to-br from-purple-600 via-indigo-600 to-blue-600">
+    <div className="relative min-h-screen flex flex-col items-center justify-center p-4 bg-gradient-to-br from-purple-600 via-indigo-600 to-blue-600">
+      {/* Top-left back link */}
+      <a
+        href="https://www.meetshipper.com"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="absolute top-6 left-6 text-white/90 text-base font-semibold hover:text-purple-300 transition-colors duration-300 animate-fade-in-left z-10"
+      >
+        ← Back to MeetShipper Website
+      </a>
+
+      {/* Right-center status message */}
+      <div className="hidden lg:block absolute right-10 top-1/2 transform -translate-y-1/2 text-lg font-medium text-white/90 animate-subtle-pulse z-10">
+        We're currently in development — stay tuned! 🚀
+      </div>
+
       <div className="max-w-2xl w-full">
         {/* Header */}
         <div className="text-center mb-8">

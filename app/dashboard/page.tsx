@@ -165,6 +165,36 @@ export default function Dashboard() {
     <div className="min-h-screen bg-gray-50">
       <Navigation />
 
+      {/* Animated Banner */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
+        <div className="flex justify-end">
+          <a
+            href="https://www.meetshipper.com/frame"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="
+              inline-block
+              backdrop-blur-xl
+              bg-gradient-to-r from-white/80 via-purple-50/70 to-purple-100/60
+              rounded-xl
+              shadow-lg
+              hover:shadow-2xl
+              px-6 py-3
+              transition-all duration-300
+              hover:scale-105
+              hover:from-white/90 hover:via-purple-100/80 hover:to-purple-200/70
+              border border-purple-200/40
+              animate-fade-slide-up
+              group
+            "
+          >
+            <p className="text-sm sm:text-base md:text-lg font-bold text-center bg-gradient-to-r from-purple-700 via-purple-600 to-blue-600 bg-clip-text text-transparent group-hover:from-purple-800 group-hover:via-purple-700 group-hover:to-blue-700 transition-all duration-300">
+              MeetShipper — Discover the Miniapp
+            </p>
+          </a>
+        </div>
+      </div>
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Profile Header and Leaderboard Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
